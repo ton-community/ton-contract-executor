@@ -1,0 +1,16 @@
+{
+  "name": "yarn",
+  "version": "0.1.0",
+  "description": "TON Contracts local executor",
+  "main": "index.js",
+  "author": "Narek Abovyan <xeroxaltox@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^16.11.10",
+    "typescript": "^4.5.2"
+  },
+  "dependencies": {
+    "ton": "^6.2.1",
+    "ton-compiler": "^0.9.0"
+  }
+}
