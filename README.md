@@ -17,6 +17,9 @@ vm-execute fetches vm code, initial stack and data cell from json config, execut
 ## How to use
 
 ```typescript
+import { SmartContract } from "ton-contract-executor";
+import { Cell } from "ton";
+
 const source = `
     () main() {
         ;; noop
