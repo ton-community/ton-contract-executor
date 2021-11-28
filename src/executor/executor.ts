@@ -8,18 +8,17 @@ import * as path from 'path';
 type TVMConfig = {
     function_selector: number,
     init_stack: TVMStack,
-    code: string,
-    data: string
+    code: string,               // base64 encoded TVM fift assembly
+    data: string                // base64 encoded boc(data_cell)
 }
 
 export type TVMStack = TVMStackEntry[]
 
 type TVMExecutionResult = {
-    exit_code: number,
-    stack: TVMStack,
-    data_cell: string           // Base64 serialized BOC
-    action_list_cell: string    // Base64 serialized BOC
-    code_cell: string           // Base64 serialized BOC
+    exit_code: number,          // TVM Exit code
+    stack: TVMStack,            // TVM Resulting stack
+    data_cell: string           // base64 encoded BOC
+    action_list_cell: string    // base64 encoded BOC
 }
 
 type TVMStackEntry =
@@ -35,7 +34,7 @@ export type TVMStackEntryInt = { type: 'int', value: string }
 export type TVMStackEntryCellSlice = { type: 'cell_slice', value: string }
 export type TVMStackEntryTuple = { type: 'tuple', value: TVMStackEntry[] }
 
-async function runTVM(config: TVMConfig): Promise<TVMExecutionResult> {
+export async function runTVM(config: TVMConfig): Promise<TVMExecutionResult> {
     let configFile = await createTempFile(JSON.stringify(config))
     const vmExecPath = path.resolve(__dirname, '..', '..', 'bin', 'macos', 'vm-exec-arm64')
     let res = await execAsync(`${vmExecPath} -c ${configFile.path}`)
@@ -73,7 +72,7 @@ export async function runContractAssembly(code: string, dataCell: Cell, stack: T
     return await runTVM(executorConfig)
 }
 
-function getSelectorForMethod(methodName: string) {
+export function getSelectorForMethod(methodName: string) {
     if (methodName === 'main') {
         return 0
     } else if (methodName === 'recv_internal') {
