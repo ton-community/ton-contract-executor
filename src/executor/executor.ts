@@ -1,7 +1,7 @@
 import {Cell} from "ton";
-import {crc16} from "./crc16";
-import {execAsync} from "./exec";
-import {createTempFile} from "./createTempFile";
+import {crc16} from "../utils/crc16";
+import {execAsync} from "../utils/exec";
+import {createTempFile} from "../utils/createTempFile";
 import {compileFunc} from "ton-compiler";
 import * as path from 'path';
 
@@ -29,15 +29,15 @@ type TVMStackEntry =
     | TVMStackEntryCellSlice
     | TVMStackEntryTuple
 
-type TVMStackEntryNull = { type: 'null' }
-type TVMStackEntryCell = { type: 'cell', value: string }
-type TVMStackEntryInt = { type: 'int', value: string }
-type TVMStackEntryCellSlice = { type: 'cell_slice', value: string }
-type TVMStackEntryTuple = { type: 'tuple', value: TVMStackEntry[] }
+export type TVMStackEntryNull = { type: 'null' }
+export type TVMStackEntryCell = { type: 'cell', value: string }
+export type TVMStackEntryInt = { type: 'int', value: string }
+export type TVMStackEntryCellSlice = { type: 'cell_slice', value: string }
+export type TVMStackEntryTuple = { type: 'tuple', value: TVMStackEntry[] }
 
 async function runTVM(config: TVMConfig): Promise<TVMExecutionResult> {
     let configFile = await createTempFile(JSON.stringify(config))
-    const vmExecPath = path.resolve(__dirname, '..', 'bin', 'macos', 'vm-exec-arm64')
+    const vmExecPath = path.resolve(__dirname, '..', '..', 'bin', 'macos', 'vm-exec-arm64')
     let res = await execAsync(`${vmExecPath} -c ${configFile.path}`)
     await configFile.destroy()
     let lines = res.toString().split('\n')

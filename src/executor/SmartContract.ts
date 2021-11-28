@@ -2,11 +2,11 @@ import {Cell, InternalMessage} from "ton";
 import {runContractAssembly, TVMStack} from "./executor";
 import {compileFunc} from "ton-compiler";
 
-const cellToBoc = async (cell: Cell) => {
+export const cellToBoc = async (cell: Cell) => {
     return (await cell.toBoc({idx: false})).toString('base64')
 }
 
-const bocToCell = (boc: string) => {
+export const bocToCell = (boc: string) => {
     return Cell.fromBoc(Buffer.from(boc, 'base64'))[0]
 }
 
