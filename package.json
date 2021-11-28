@@ -1,10 +1,15 @@
 {
   "name": "ton-contract-executor",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "TON Contracts local executor",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "repository": "https://github.com/tonwhales/ton-contract-executor",
   "author": "Narek Abovyan <xeroxaltox@gmail.com>",
   "license": "MIT",
+  "files": [
+    "dist/**/*",
+    "bin/**/*"
+  ],
   "devDependencies": {
     "@babel/core": "^7.16.0",
     "@babel/preset-env": "^7.16.4",
