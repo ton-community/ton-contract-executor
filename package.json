@@ -1,6 +1,6 @@
 {
   "name": "ton-contract-executor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TON Contracts local executor",
   "main": "index.js",
   "author": "Narek Abovyan <xeroxaltox@gmail.com>",
