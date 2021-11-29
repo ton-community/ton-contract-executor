@@ -4,6 +4,9 @@ import {execAsync} from "../utils/exec";
 import {createTempFile} from "../utils/createTempFile";
 import {compileFunc} from "ton-compiler";
 import * as path from 'path';
+import * as os from 'os';
+
+const arch = os.arch()
 
 type TVMConfig = {
     function_selector: number,
@@ -36,7 +39,7 @@ export type TVMStackEntryTuple = { type: 'tuple', value: TVMStackEntry[] }
 
 export async function runTVM(config: TVMConfig): Promise<TVMExecutionResult> {
     let configFile = await createTempFile(JSON.stringify(config))
-    const vmExecPath = path.resolve(__dirname, '..', '..', 'bin', 'macos', 'vm-exec-arm64')
+    const vmExecPath = path.resolve(__dirname, '..', '..', 'bin', 'macos', arch === 'arm64' ? 'vm-exec-arm64' : 'vm-exec-x86-64')
     let res = await execAsync(`${vmExecPath} -c ${configFile.path}`)
     await configFile.destroy()
     let lines = res.toString().split('\n')

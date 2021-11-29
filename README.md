@@ -2,7 +2,7 @@
 
 Runs TVM locally and provides primitives for TON smart contracts local development.
 
-⚠️ we currently support only arm64 Macs
+⚠️ we currently support only macOS
 
 ## Install
 
