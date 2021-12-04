@@ -10,6 +10,16 @@ export const bocToCell = (boc: string) => {
     return Cell.fromBoc(Buffer.from(boc, 'base64'))[0]
 }
 
+class TVMExecutionException extends Error {
+    public code: number
+
+    constructor(code: number, message?: string) {
+        super(message)
+
+        this.code = code
+    }
+}
+
 //
 //  Mutable Smart Contract
 //
@@ -39,7 +49,10 @@ export class SmartContract {
             args,
             method
         )
-        if (this.config.getMethodsMutate) {
+        if (res.exit_code !== 0) {
+            throw new TVMExecutionException(res.exit_code)
+        }
+        if (this.config.getMethodsMutate && res.data_cell) {
             this.dataCell = bocToCell(res.data_cell)
         }
 
@@ -63,8 +76,13 @@ export class SmartContract {
             ],
             'recv_internal'
         )
+        if (res.exit_code !== 0) {
+            throw new TVMExecutionException(res.exit_code)
+        }
 
-        this.dataCell = bocToCell(res.data_cell)
+        if (res.data_cell) {
+            this.dataCell = bocToCell(res.data_cell)
+        }
 
         // TODO: handle code update
 

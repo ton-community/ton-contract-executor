@@ -6,7 +6,22 @@ import {compileFunc} from "ton-compiler";
 import * as path from 'path';
 import * as os from 'os';
 
-const arch = os.arch()
+function getExecutorPath() {
+    let arch = os.arch()
+    let platform = os.platform()
+
+    if (platform === 'darwin') {
+        if (arch === 'x64') {
+            return path.resolve(__dirname, '..', '..', 'bin', 'macos', 'vm-exec-x86-64')
+        } else if (arch === 'arm64') {
+            return path.resolve(__dirname, '..', '..', 'bin', 'macos', 'vm-exec-arm64')
+        }
+    } else if (platform === 'linux' && arch === 'x64') {
+        return path.resolve(__dirname, '..', '..', 'bin', 'linux', 'vm-exec-x86-64')
+    }
+
+    throw new Error('Unsupported platform & arch combination: ' + platform + ' ' + arch)
+}
 
 type TVMConfig = {
     function_selector: number,
@@ -17,11 +32,11 @@ type TVMConfig = {
 
 export type TVMStack = TVMStackEntry[]
 
-type TVMExecutionResult = {
-    exit_code: number,          // TVM Exit code
-    stack: TVMStack,            // TVM Resulting stack
-    data_cell: string           // base64 encoded BOC
-    action_list_cell: string    // base64 encoded BOC
+export type TVMExecutionResult = {
+    exit_code: number,           // TVM Exit code
+    stack?: TVMStack,            // TVM Resulting stack
+    data_cell?: string           // base64 encoded BOC
+    action_list_cell?: string    // base64 encoded BOC
 }
 
 type TVMStackEntry =
@@ -39,8 +54,7 @@ export type TVMStackEntryTuple = { type: 'tuple', value: TVMStackEntry[] }
 
 export async function runTVM(config: TVMConfig): Promise<TVMExecutionResult> {
     let configFile = await createTempFile(JSON.stringify(config))
-    const vmExecPath = path.resolve(__dirname, '..', '..', 'bin', 'macos', arch === 'arm64' ? 'vm-exec-arm64' : 'vm-exec-x86-64')
-    let res = await execAsync(`${vmExecPath} -c ${configFile.path}`)
+    let res = await execAsync(`${getExecutorPath()} -c ${configFile.path}`)
     await configFile.destroy()
     let lines = res.toString().split('\n')
     return JSON.parse(lines[lines.length - 1])
