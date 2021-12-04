@@ -17,7 +17,11 @@ function getExecutorPath() {
             return path.resolve(__dirname, '..', '..', 'bin', 'macos', 'vm-exec-arm64')
         }
     } else if (platform === 'linux' && arch === 'x64') {
-        return path.resolve(__dirname, '..', '..', 'bin', 'linux', 'vm-exec-x86-64')
+        if (arch === 'x64') {
+            return path.resolve(__dirname, '..', '..', 'bin', 'linux', 'vm-exec-x86-64')
+        } else if (arch === 'arm64') {
+            return path.resolve(__dirname, '..', '..', 'bin', 'linux', 'vm-exec-arm64')
+        }
     }
 
     throw new Error('Unsupported platform & arch combination: ' + platform + ' ' + arch)
