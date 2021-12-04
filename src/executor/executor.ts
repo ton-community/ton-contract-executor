@@ -34,12 +34,13 @@ export type TVMStack = TVMStackEntry[]
 
 export type TVMExecutionResult = {
     exit_code: number,           // TVM Exit code
+    gas_consumed: number,
     stack?: TVMStack,            // TVM Resulting stack
     data_cell?: string           // base64 encoded BOC
     action_list_cell?: string    // base64 encoded BOC
 }
 
-type TVMStackEntry =
+export type TVMStackEntry =
     | TVMStackEntryNull
     | TVMStackEntryCell
     | TVMStackEntryInt

@@ -1,6 +1,8 @@
 import {bocToCell, cellToBoc, SmartContract} from "./SmartContract";
 import {Cell} from "ton";
 import {TVMStackEntryCell, TVMStackEntryInt, TVMStackEntryTuple} from "./executor";
+import BN from "bn.js";
+import exp from "constants";
 
 describe('SmartContract', () => {
     it('should run basic contract', async () => {
@@ -16,8 +18,8 @@ describe('SmartContract', () => {
         let contract = await SmartContract.fromFuncSource(source, new Cell())
         let res = await contract.invokeGetMethod('test', [])
 
-        expect(res.stack[0].type).toEqual('int')
-        expect((res.stack[0] as TVMStackEntryInt).value).toEqual('777')
+        expect(res.result[0]).toBeInstanceOf(BN)
+        expect(res.result[0]).toEqual(new BN(777))
     })
 
     it('handle cells', async () => {
@@ -36,9 +38,8 @@ describe('SmartContract', () => {
 
         let res = await contract.invokeGetMethod('test', [{ type: 'cell', value: await cellToBoc(cell) }])
 
-        expect(res.stack[0].type).toEqual('cell')
-        let receivedCell = bocToCell((res.stack[0] as TVMStackEntryCell).value)
-        expect(receivedCell.toString()).toEqual(cell.toString())
+        expect(res.result[0]).toBeInstanceOf(Cell)
+        expect((res.result[0] as Cell).toString()).toEqual(cell.toString())
     })
 
     it('handle integers', async () => {
@@ -55,8 +56,8 @@ describe('SmartContract', () => {
 
         let res = await contract.invokeGetMethod('test', [{ type: 'int', value: '123' }])
 
-        expect(res.stack[0].type).toEqual('int')
-        expect((res.stack[0] as TVMStackEntryInt).value).toEqual('123')
+        expect(res.result[0]).toBeInstanceOf(BN)
+        expect(res.result[0]).toEqual(new BN(123))
     })
 
     it('handle tuples', async () => {
@@ -80,7 +81,10 @@ describe('SmartContract', () => {
         }
 
         let res = await contract.invokeGetMethod('test', [tuple])
-        expect(res.stack[0]).toEqual(tuple)
+        expect(res.result[0]).toEqual([
+            new BN(1),
+            new BN(2)
+        ])
     })
 
     it('should update contract state between calls', async () => {
@@ -107,12 +111,12 @@ describe('SmartContract', () => {
         let contract = await SmartContract.fromFuncSource(source, dataCell, { getMethodsMutate: true })
 
         let res = await contract.invokeGetMethod('test', [])
-        expect(res.stack[0]).toEqual({ type: 'int', value: '0' })
+        expect(res.result[0]).toEqual(new BN(0))
 
         let res2 = await contract.invokeGetMethod('test', [])
-        expect(res2.stack[0]).toEqual({ type: 'int', value: '1' })
+        expect(res2.result[0]).toEqual(new BN(1))
 
         let res3 = await contract.invokeGetMethod('test', [])
-        expect(res3.stack[0]).toEqual({ type: 'int', value: '2' })
+        expect(res3.result[0]).toEqual(new BN(2))
     })
 })
