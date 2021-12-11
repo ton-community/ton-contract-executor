@@ -82,7 +82,7 @@ export class SmartContract {
         )
 
         if (res.exit_code !== 0) {
-            return { exit_code: res.exit_code, result: [] }
+            return { exit_code: res.exit_code, result: [] as NormalizedStackEntry[] }
         }
 
         if (this.config.getMethodsMutate && res.data_cell) {
@@ -117,7 +117,7 @@ export class SmartContract {
         )
 
         if (res.exit_code !== 0) {
-            return { exit_code: res.exit_code, result: [] }
+            return { exit_code: res.exit_code, result: [] as NormalizedStackEntry[] }
         }
 
         if (res.data_cell) {
@@ -154,7 +154,7 @@ export class SmartContract {
         )
 
         if (res.exit_code !== 0) {
-            return { exit_code: res.exit_code, result: [] }
+            return { exit_code: res.exit_code, result: [] as NormalizedStackEntry[] }
         }
 
         if (res.data_cell) {

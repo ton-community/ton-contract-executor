@@ -3210,10 +3210,10 @@ ton-crypto@1.5.1:
     jssha "3.2.0"
     tweetnacl "1.0.3"
 
-ton@^6.2.1:
-  version "6.2.1"
-  resolved "https://registry.yarnpkg.com/ton/-/ton-6.2.1.tgz#b4ba25c19a6877b455abce33707a7364bba344c1"
-  integrity sha512-8xApUAO5qvL5mCTxXXHMD97lkvxozx11Si+25AwR2w/hmpjVEhnEdmBrOwpxPd1WRodKBl8ETQZCyhUda68RRA==
+ton@^6.3.0:
+  version "6.3.0"
+  resolved "https://registry.yarnpkg.com/ton/-/ton-6.3.0.tgz#ae3508c29f203edce0f1818275b981852a0e77f8"
+  integrity sha512-R9zE3a9Ww4GaiDDyjPhtjZgl+QT9QZ01tnR7SYV4hfDaVl+p3drDwshnRtNC7Bw0ebS9LUkCiTr6J6n8KZubfg==
   dependencies:
     bn.js "5.2.0"
     dataloader "^2.0.0"
