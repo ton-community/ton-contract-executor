@@ -109,7 +109,7 @@ export class SmartContract {
             this.dataCell,
             [
                 {type: 'int', value: '1000'},                           // smc_balance
-                {type: 'int', value: '100' },                           // msg_value
+                {type: 'int', value: message.value.toString(10)}, // msg_value
                 {type: 'cell', value: await cellToBoc(msgCell)},        // msg cell
                 {type: 'cell_slice', value: await cellToBoc(bodyCell)}, // body slice
             ],
