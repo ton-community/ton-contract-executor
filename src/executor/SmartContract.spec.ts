@@ -130,11 +130,12 @@ describe('SmartContract', () => {
                 return now();
             }
         `
+        let now = Math.floor(Date.now() / 1000)
         let contract = await SmartContract.fromFuncSource(source, new Cell())
-        contract.setUnixTime(777)
+        contract.setUnixTime(now)
         let res = await contract.invokeGetMethod('get_time', [])
 
         expect(res.result[0]).toBeInstanceOf(BN)
-        expect(res.result[0]).toEqual(new BN(777))
+        expect(res.result[0]).toEqual(new BN(now))
     })
 })
