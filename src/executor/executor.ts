@@ -32,7 +32,8 @@ export type TVMConfig = {
     function_selector: number,
     init_stack: TVMStack,
     code: string,               // base64 encoded TVM fift assembly
-    data: string                // base64 encoded boc(data_cell)
+    data: string,               // base64 encoded boc(data_cell)
+    time: number
 }
 
 export type TVMStack = TVMStackEntry[]
@@ -66,13 +67,14 @@ export async function runTVM(config: TVMConfig): Promise<TVMExecutionResult> {
     return JSON.parse(lines[lines.length - 1])
 }
 
-export async function runContractAssembly(code: Cell, dataCell: Cell, stack: TVMStack, method: string): Promise<TVMExecutionResult> {
+export async function runContract(code: Cell, dataCell: Cell, stack: TVMStack, method: string, extra?: { time: number }): Promise<TVMExecutionResult> {
     let data = (await dataCell.toBoc({idx: false})).toString('base64')
     let executorConfig = {
         function_selector: getSelectorForMethod(method),
         init_stack: stack,
         code: (await code.toBoc({ idx: false })).toString('base64'),
-        data
+        data,
+        time: extra ? extra.time : Math.floor(Date.now() / 1000)
     }
 
     return await runTVM(executorConfig)

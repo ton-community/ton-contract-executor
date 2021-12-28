@@ -1,5 +1,5 @@
 import {Cell, ExternalMessage, InternalMessage, Slice} from "ton";
-import {runContractAssembly, TVMStack, TVMStackEntry} from "./executor";
+import {runContract, TVMStack, TVMStackEntry} from "./executor";
 import {compileFunc} from "ton-compiler";
 import BN from "bn.js";
 
@@ -71,6 +71,7 @@ export class SmartContract {
     public codeCell: Cell
     public dataCell: Cell
     private config: SmartContractConfig
+    private time = Math.round(Date.now())
 
     private constructor(codeCell: Cell, dataCell: Cell, config?: SmartContractConfig) {
         this.codeCell = codeCell
@@ -79,11 +80,12 @@ export class SmartContract {
     }
 
     async invokeGetMethod(method: string, args: TVMStack): Promise<ExecutionResult> {
-        let res = await runContractAssembly(
+        let res = await runContract(
             this.codeCell,
             this.dataCell,
             args,
-            method
+            method,
+            { time: this.time }
         )
 
         if (res.exit_code !== 0) {
@@ -110,7 +112,7 @@ export class SmartContract {
         let bodyCell = new Cell()
         message.body.writeTo(bodyCell)
 
-        let res = await runContractAssembly(
+        let res = await runContract(
             this.codeCell,
             this.dataCell,
             [
@@ -119,7 +121,8 @@ export class SmartContract {
                 {type: 'cell', value: await cellToBoc(msgCell)},        // msg cell
                 {type: 'cell_slice', value: await cellToBoc(bodyCell)}, // body slice
             ],
-            'recv_internal'
+            'recv_internal',
+            { time: this.time }
         )
 
         if (res.exit_code !== 0) {
@@ -148,7 +151,7 @@ export class SmartContract {
         let bodyCell = new Cell()
         message.body.writeTo(bodyCell)
 
-        let res = await runContractAssembly(
+        let res = await runContract(
             this.codeCell,
             this.dataCell,
             [
@@ -157,7 +160,8 @@ export class SmartContract {
                 {type: 'cell', value: await cellToBoc(msgCell)},        // msg cell
                 {type: 'cell_slice', value: await cellToBoc(bodyCell)}, // body slice
             ],
-            'recv_external'
+            'recv_external',
+            { time: this.time }
         )
 
         if (res.exit_code !== 0) {
@@ -177,6 +181,10 @@ export class SmartContract {
             result: await normalizeTvmStack(res.stack || []),
             action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined
         }
+    }
+
+    setUnixTime(time: number) {
+        this.time = time
     }
 
     static async fromFuncSource(source: string, dataCell: Cell, config?: SmartContractConfig) {

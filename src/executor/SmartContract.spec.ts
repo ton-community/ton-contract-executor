@@ -119,4 +119,22 @@ describe('SmartContract', () => {
         let res3 = await contract.invokeGetMethod('test', [])
         expect(res3.result[0]).toEqual(new BN(2))
     })
+
+    it('should handle custom time', async () => {
+        const source = `
+            () main() {
+                ;; noop
+            }
+        
+            int get_time() method_id {
+                return now();
+            }
+        `
+        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        contract.setUnixTime(777)
+        let res = await contract.invokeGetMethod('get_time', [])
+
+        expect(res.result[0]).toBeInstanceOf(BN)
+        expect(res.result[0]).toEqual(new BN(777))
+    })
 })
