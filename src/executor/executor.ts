@@ -5,6 +5,7 @@ import {createTempFile} from "../utils/createTempFile";
 import {compileFunc} from "ton-compiler";
 import * as path from 'path';
 import * as os from 'os';
+import * as Buffer from "buffer";
 
 function getExecutorPath() {
     let arch = os.arch()
@@ -27,7 +28,7 @@ function getExecutorPath() {
     throw new Error('Unsupported platform & arch combination: ' + platform + ' ' + arch)
 }
 
-type TVMConfig = {
+export type TVMConfig = {
     function_selector: number,
     init_stack: TVMStack,
     code: string,               // base64 encoded TVM fift assembly
@@ -65,29 +66,12 @@ export async function runTVM(config: TVMConfig): Promise<TVMExecutionResult> {
     return JSON.parse(lines[lines.length - 1])
 }
 
-export async function runContract(code: string, dataCell: Cell, stack: TVMStack, method: string): Promise<TVMExecutionResult> {
-    let tempCodeFile = await createTempFile(code)
-    let compiledSource = await compileFunc(code)
-    await tempCodeFile.destroy()
-
-    let data = (await dataCell.toBoc({idx: false})).toString('base64')
-
-    let executorConfig = {
-        function_selector: getSelectorForMethod(method),
-        init_stack: stack,
-        code: Buffer.from(compiledSource.fift).toString('base64'),
-        data
-    }
-
-    return await runTVM(executorConfig)
-}
-
-export async function runContractAssembly(code: string, dataCell: Cell, stack: TVMStack, method: string): Promise<TVMExecutionResult> {
+export async function runContractAssembly(code: Cell, dataCell: Cell, stack: TVMStack, method: string): Promise<TVMExecutionResult> {
     let data = (await dataCell.toBoc({idx: false})).toString('base64')
     let executorConfig = {
         function_selector: getSelectorForMethod(method),
         init_stack: stack,
-        code: Buffer.from(code).toString('base64'),
+        code: (await code.toBoc({ idx: false })).toString('base64'),
         data
     }
 

@@ -41,48 +41,53 @@ async function normalizeTvmStack(stack: TVMStack) {
     return await Promise.all(stack.map(v => normalizeTvmStackEntry(v)))
 }
 
-class TVMExecutionException extends Error {
-    public code: number
-
-    constructor(code: number, message?: string) {
-        super(message)
-
-        this.code = code
-    }
+type SmartContractConfig = {
+    // Whether or not get methods should update smc data, false by default (useful for debug)
+    getMethodsMutate: boolean
 }
+
+type FailedExecutionResult = {
+    type: 'failed'
+    exit_code: number
+    result: NormalizedStackEntry[]
+}
+
+type SuccessfulExecutionResult = {
+    type: 'success',
+    exit_code: number,
+    gas_consumed: number,
+    result:  NormalizedStackEntry[],
+    action_list_cell?: Cell
+}
+
+type ExecutionResult = FailedExecutionResult | SuccessfulExecutionResult
 
 //
 //  Mutable Smart Contract
 //
 //  Invoking mutating methods of contract mutates data cell
 //
-
-type SmartContractConfig = {
-    // Whether or not get methods should update smc data, false by default (useful for debug)
-    getMethodsMutate: boolean
-}
-
 export class SmartContract {
-    private assemblyCode: string
-    private dataCell: Cell
+    public codeCell: Cell
+    public dataCell: Cell
     private config: SmartContractConfig
 
-    private constructor(assemblyCode: string, dataCell: Cell, config?: SmartContractConfig) {
-        this.assemblyCode = assemblyCode
+    private constructor(codeCell: Cell, dataCell: Cell, config?: SmartContractConfig) {
+        this.codeCell = codeCell
         this.dataCell = dataCell
         this.config = config || { getMethodsMutate: false }
     }
 
-    async invokeGetMethod(method: string, args: TVMStack) {
+    async invokeGetMethod(method: string, args: TVMStack): Promise<ExecutionResult> {
         let res = await runContractAssembly(
-            this.assemblyCode,
+            this.codeCell,
             this.dataCell,
             args,
             method
         )
 
         if (res.exit_code !== 0) {
-            return { exit_code: res.exit_code, result: [] as NormalizedStackEntry[] }
+            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[] }
         }
 
         if (this.config.getMethodsMutate && res.data_cell) {
@@ -90,6 +95,7 @@ export class SmartContract {
         }
 
         return {
+            type: 'success',
             exit_code: res.exit_code,
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
@@ -97,7 +103,7 @@ export class SmartContract {
         }
     }
 
-    async sendInternalMessage(message: InternalMessage) {
+    async sendInternalMessage(message: InternalMessage): Promise<ExecutionResult> {
         let msgCell = new Cell()
         message.writeTo(msgCell)
 
@@ -105,7 +111,7 @@ export class SmartContract {
         message.body.writeTo(bodyCell)
 
         let res = await runContractAssembly(
-            this.assemblyCode,
+            this.codeCell,
             this.dataCell,
             [
                 {type: 'int', value: '1000'},                           // smc_balance
@@ -117,7 +123,7 @@ export class SmartContract {
         )
 
         if (res.exit_code !== 0) {
-            return { exit_code: res.exit_code, result: [] as NormalizedStackEntry[] }
+            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[] }
         }
 
         if (res.data_cell) {
@@ -127,6 +133,7 @@ export class SmartContract {
         // TODO: handle code update
 
         return {
+            type: 'success',
             exit_code: res.exit_code,
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
@@ -134,7 +141,7 @@ export class SmartContract {
         }
     }
 
-    async sendExternalMessage(message: ExternalMessage) {
+    async sendExternalMessage(message: ExternalMessage): Promise<ExecutionResult> {
         let msgCell = new Cell()
         message.writeTo(msgCell)
 
@@ -142,7 +149,7 @@ export class SmartContract {
         message.body.writeTo(bodyCell)
 
         let res = await runContractAssembly(
-            this.assemblyCode,
+            this.codeCell,
             this.dataCell,
             [
                 {type: 'int', value: '1000'},                           // smc_balance
@@ -154,7 +161,7 @@ export class SmartContract {
         )
 
         if (res.exit_code !== 0) {
-            return { exit_code: res.exit_code, result: [] as NormalizedStackEntry[] }
+            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[] }
         }
 
         if (res.data_cell) {
@@ -164,6 +171,7 @@ export class SmartContract {
         // TODO: handle code update
 
         return {
+            type: 'success',
             exit_code: res.exit_code,
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
@@ -173,10 +181,10 @@ export class SmartContract {
 
     static async fromFuncSource(source: string, dataCell: Cell, config?: SmartContractConfig) {
         let compiledSource = await compileFunc(source)
-        return new SmartContract(compiledSource.fift, dataCell, config)
+        return new SmartContract(Cell.fromBoc(compiledSource.cell)[0], dataCell, config)
     }
 
-    static async fromAssembly(source: string, dataCell: Cell, config?: SmartContractConfig) {
-        return new SmartContract(source, dataCell, config)
+    static async fromCell(codeCell: Cell, dataCell: Cell, config?: SmartContractConfig) {
+        return new SmartContract(codeCell, dataCell, config)
     }
 }
