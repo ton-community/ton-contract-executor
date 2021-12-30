@@ -9,7 +9,7 @@ yarn add ton-contract-executor
 ```
 
 ## How it works 
-This package internally uses vm-execute cli tool (which will be published soon).
+This package internally uses vm-execute cli tool compiled to WASM.
 vm-execute fetches vm code, initial stack and data cell from json config, executes TVM and returns resulting vm stack as json.
 
 ## How to use
