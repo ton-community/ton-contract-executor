@@ -1,32 +1,6 @@
 import {Cell} from "ton";
 import {crc16} from "../utils/crc16";
-import {execAsync} from "../utils/exec";
-import {createTempFile} from "../utils/createTempFile";
-import {compileFunc} from "ton-compiler";
-import * as path from 'path';
-import * as os from 'os';
-import * as Buffer from "buffer";
-
-function getExecutorPath() {
-    let arch = os.arch()
-    let platform = os.platform()
-
-    if (platform === 'darwin') {
-        if (arch === 'x64') {
-            return path.resolve(__dirname, '..', '..', 'bin', 'macos', 'vm-exec-x86-64')
-        } else if (arch === 'arm64') {
-            return path.resolve(__dirname, '..', '..', 'bin', 'macos', 'vm-exec-arm64')
-        }
-    } else if (platform === 'linux' && arch === 'x64') {
-        if (arch === 'x64') {
-            return path.resolve(__dirname, '..', '..', 'bin', 'linux', 'vm-exec-x86-64')
-        } else if (arch === 'arm64') {
-            return path.resolve(__dirname, '..', '..', 'bin', 'linux', 'vm-exec-arm64')
-        }
-    }
-
-    throw new Error('Unsupported platform & arch combination: ' + platform + ' ' + arch)
-}
+import {initializeVmExec, vm_exec} from '../vm-exec/vmExec'
 
 export type TVMConfig = {
     function_selector: number,
@@ -60,11 +34,9 @@ export type TVMStackEntryCellSlice = { type: 'cell_slice', value: string }
 export type TVMStackEntryTuple = { type: 'tuple', value: TVMStackEntry[] }
 
 export async function runTVM(config: TVMConfig): Promise<TVMExecutionResult> {
-    let configFile = await createTempFile(JSON.stringify(config))
-    let res = await execAsync(`${getExecutorPath()} -c ${configFile.path}`)
-    await configFile.destroy()
-    let lines = res.toString().split('\n')
-    return JSON.parse(lines[lines.length - 1])
+    await initializeVmExec()
+    let res = await vm_exec(JSON.stringify(config))
+    return JSON.parse(res)
 }
 
 export async function runContract(code: Cell, dataCell: Cell, stack: TVMStack, method: string, extra?: { time: number }): Promise<TVMExecutionResult> {
@@ -76,7 +48,6 @@ export async function runContract(code: Cell, dataCell: Cell, stack: TVMStack, m
         data,
         time: extra ? extra.time : Math.floor(Date.now() / 1000)
     }
-
     return await runTVM(executorConfig)
 }
 
