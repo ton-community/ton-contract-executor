@@ -2,13 +2,6 @@
 
 Runs TVM locally and provides primitives for TON smart contracts local development.
 
-Currently supported platforms:
-
-- macOS Apple Silicon 
-- macOS x86_64
-- linux x86_64
-- linux arm64
-
 ## Install
 
 ```bash
