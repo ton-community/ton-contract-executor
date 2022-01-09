@@ -109,8 +109,12 @@ export class SmartContract {
         let msgCell = new Cell()
         message.writeTo(msgCell)
 
+        if (!message.body.body) {
+            throw new Error('No body was provided for message')
+        }
+
         let bodyCell = new Cell()
-        message.body.writeTo(bodyCell)
+        message.body.body.writeTo(bodyCell)
 
         let res = await runContract(
             this.codeCell,
@@ -148,8 +152,12 @@ export class SmartContract {
         let msgCell = new Cell()
         message.writeTo(msgCell)
 
+        if (!message.body.body) {
+            throw new Error('No body was provided for message')
+        }
+
         let bodyCell = new Cell()
-        message.body.writeTo(bodyCell)
+        message.body.body.writeTo(bodyCell)
 
         let res = await runContract(
             this.codeCell,

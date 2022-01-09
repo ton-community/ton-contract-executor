@@ -1,6 +1,6 @@
 {
   "name": "ton-contract-executor",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "TON Contracts local executor",
   "main": "dist/index.js",
   "repository": "https://github.com/tonwhales/ton-contract-executor",
@@ -22,7 +22,8 @@
   },
   "dependencies": {
     "bn.js": "^5.2.0",
-    "ton": "^6.3.0"
+    "ton": "^6.5.2",
+    "ton-compiler": "^0.9.0"
   },
   "scripts": {
     "copy:wasm": "cp ./src/vm-exec/vm-exec.js ./dist/vm-exec/vm-exec.js && cp ./src/vm-exec/vm-exec.wasm ./dist/vm-exec/vm-exec.wasm",
