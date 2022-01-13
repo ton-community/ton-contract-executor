@@ -1,6 +1,6 @@
 {
   "name": "ton-contract-executor",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "TON Contracts local executor",
   "main": "dist/index.js",
   "repository": "https://github.com/tonwhales/ton-contract-executor",

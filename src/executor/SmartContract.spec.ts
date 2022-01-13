@@ -1,5 +1,5 @@
 import {bocToCell, cellToBoc, SmartContract} from "./SmartContract";
-import {Cell} from "ton";
+import {Address, Cell, CellMessage, CommonMessageInfo, ExternalMessage, InternalMessage, Slice, toNano} from "ton";
 import {TVMStackEntryCell, TVMStackEntryInt, TVMStackEntryTuple} from "./executor";
 import BN from "bn.js";
 import exp from "constants";
@@ -137,5 +137,65 @@ describe('SmartContract', () => {
 
         expect(res.result[0]).toBeInstanceOf(BN)
         expect(res.result[0]).toEqual(new BN(now))
+    })
+
+    it('should handle internal messages', async () => {
+        const source = `
+            (cell, slice) recv_internal(int smc_balance, int msg_value, cell msg, slice msg_body) {
+                return (msg, msg_body);
+            }
+        `
+
+        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let bodyCell = new Cell()
+        bodyCell.bits.writeUint(777, 256)
+
+        let msg = new InternalMessage({
+            to: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
+            value: toNano(1),
+            bounce: false,
+            body: new CommonMessageInfo({
+                body: new CellMessage(bodyCell)
+            })
+        })
+
+        let msgCell = new Cell()
+        msg.writeTo(msgCell)
+
+        let res = await contract.sendInternalMessage(msg)
+        let [resCell, resBody] = res.result as [Cell, Slice]
+        expect(resCell.toString()).toEqual(msgCell.toString())
+        expect(resBody.toCell().toString()).toEqual(bodyCell.toString())
+    })
+
+    it('should handle external messages', async () => {
+        const source = `
+            (cell, slice) recv_internal(int smc_balance, int msg_value, cell msg, slice msg_body) {
+                return (msg, msg_body);
+            }
+            
+             (cell, slice) recv_external(int smc_balance, int msg_value, cell msg, slice msg_body) {
+                return (msg, msg_body);
+            }
+        `
+
+        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let bodyCell = new Cell()
+        bodyCell.bits.writeUint(777, 256)
+
+        let msg = new ExternalMessage({
+            to: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
+            body: new CommonMessageInfo({
+                body: new CellMessage(bodyCell)
+            })
+        })
+
+        let msgCell = new Cell()
+        msg.writeTo(msgCell)
+
+        let res = await contract.sendExternalMessage(msg)
+        let [resCell, resBody] = res.result as [Cell, Slice]
+        expect(resCell.toString()).toEqual(msgCell.toString())
+        expect(resBody.toCell().toString()).toEqual(bodyCell.toString())
     })
 })

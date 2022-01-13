@@ -50,6 +50,7 @@ type FailedExecutionResult = {
     type: 'failed'
     exit_code: number
     result: NormalizedStackEntry[]
+    logs: string
 }
 
 type SuccessfulExecutionResult = {
@@ -58,6 +59,7 @@ type SuccessfulExecutionResult = {
     gas_consumed: number,
     result:  NormalizedStackEntry[],
     action_list_cell?: Cell
+    logs: string
 }
 
 type ExecutionResult = FailedExecutionResult | SuccessfulExecutionResult
@@ -89,7 +91,7 @@ export class SmartContract {
         )
 
         if (res.exit_code !== 0) {
-            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[] }
+            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[], logs: res.logs }
         }
 
         if (this.config.getMethodsMutate && res.data_cell) {
@@ -101,7 +103,8 @@ export class SmartContract {
             exit_code: res.exit_code,
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
-            action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined
+            action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined,
+            logs: res.logs
         }
     }
 
@@ -130,7 +133,7 @@ export class SmartContract {
         )
 
         if (res.exit_code !== 0) {
-            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[] }
+            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[], logs: res.logs }
         }
 
         if (res.data_cell) {
@@ -144,7 +147,8 @@ export class SmartContract {
             exit_code: res.exit_code,
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
-            action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined
+            action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined,
+            logs: res.logs
         }
     }
 
@@ -173,7 +177,7 @@ export class SmartContract {
         )
 
         if (res.exit_code !== 0) {
-            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[] }
+            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[], logs: res.logs }
         }
 
         if (res.data_cell) {
@@ -187,7 +191,8 @@ export class SmartContract {
             exit_code: res.exit_code,
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
-            action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined
+            action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined,
+            logs: res.logs
         }
     }
 

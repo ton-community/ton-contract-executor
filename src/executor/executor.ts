@@ -18,6 +18,7 @@ export type TVMExecutionResult = {
     stack?: TVMStack,            // TVM Resulting stack
     data_cell?: string           // base64 encoded BOC
     action_list_cell?: string    // base64 encoded BOC
+    logs: string
 }
 
 export type TVMStackEntry =
@@ -35,8 +36,11 @@ export type TVMStackEntryTuple = { type: 'tuple', value: TVMStackEntry[] }
 
 export async function runTVM(config: TVMConfig): Promise<TVMExecutionResult> {
     await initializeVmExec()
-    let res = await vm_exec(JSON.stringify(config))
-    return JSON.parse(res)
+    let {result, logs} = await vm_exec(JSON.stringify(config))
+    return {
+        ...JSON.parse(result),
+        logs: logs
+    }
 }
 
 export async function runContract(code: Cell, dataCell: Cell, stack: TVMStack, method: string, extra?: { time: number }): Promise<TVMExecutionResult> {
