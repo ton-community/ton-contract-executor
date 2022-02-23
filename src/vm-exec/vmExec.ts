@@ -1,14 +1,5 @@
 const VmExec: any = require('../vm-exec/vm-exec')
 
-let stdErr = ''
-
-VmExec.setPrint((str: any) => {
-    // noop
-})
-VmExec.setPrintErr((str: any) => {
-    stdErr += str + '\n'
-})
-
 let vmExecInitialized = false
 let onVmExecInit = () => {}
 
@@ -32,9 +23,7 @@ export function vm_exec(config: string) {
     let ref = VmExec.allocate(bytes, VmExec.ALLOC_NORMAL)
     let res = VmExec._vm_exec(bytes.length - 1, ref)
     let out = {
-        result: VmExec.UTF8ToString(res),
-        logs: stdErr
+        result: VmExec.UTF8ToString(res)
     }
-    stdErr = ''
     return out
 }

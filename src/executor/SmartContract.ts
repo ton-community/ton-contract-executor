@@ -104,7 +104,7 @@ export class SmartContract {
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
             action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined,
-            logs: res.logs
+            logs: Buffer.from(res.logs, 'base64').toString()
         }
     }
 
@@ -148,7 +148,7 @@ export class SmartContract {
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
             action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined,
-            logs: res.logs
+            logs: Buffer.from(res.logs, 'base64').toString()
         }
     }
 
@@ -192,7 +192,7 @@ export class SmartContract {
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
             action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined,
-            logs: res.logs
+            logs: Buffer.from(res.logs, 'base64').toString()
         }
     }
 
