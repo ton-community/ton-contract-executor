@@ -1,5 +1,5 @@
 import {Cell, ExternalMessage, InternalMessage, Slice} from "ton";
-import {runContract, TVMStack, TVMStackEntry} from "./executor";
+import {buildC7, C7Config, runContract, TVMStack, TVMStackEntry, TVMStackEntryTuple} from "./executor";
 import {compileFunc} from "ton-compiler";
 import BN from "bn.js";
 
@@ -64,6 +64,8 @@ type SuccessfulExecutionResult = {
 
 type ExecutionResult = FailedExecutionResult | SuccessfulExecutionResult
 
+const decodeLogs = (logs: string) => Buffer.from(logs, 'base64').toString()
+
 //
 //  Mutable Smart Contract
 //
@@ -73,7 +75,8 @@ export class SmartContract {
     public codeCell: Cell
     public dataCell: Cell
     private config: SmartContractConfig
-    private time = Math.round(Date.now())
+    private c7Config: C7Config = {}
+    private c7: TVMStackEntryTuple|null = null
 
     private constructor(codeCell: Cell, dataCell: Cell, config?: SmartContractConfig) {
         this.codeCell = codeCell
@@ -87,11 +90,11 @@ export class SmartContract {
             this.dataCell,
             args,
             method,
-            { time: this.time }
+            this.getC7()
         )
 
         if (res.exit_code !== 0) {
-            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[], logs: res.logs }
+            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[], logs: decodeLogs(res.logs) }
         }
 
         if (this.config.getMethodsMutate && res.data_cell) {
@@ -104,7 +107,7 @@ export class SmartContract {
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
             action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined,
-            logs: Buffer.from(res.logs, 'base64').toString()
+            logs: decodeLogs(res.logs)
         }
     }
 
@@ -129,11 +132,11 @@ export class SmartContract {
                 {type: 'cell_slice', value: await cellToBoc(bodyCell)}, // body slice
             ],
             'recv_internal',
-            { time: this.time }
+            this.getC7()
         )
 
         if (res.exit_code !== 0) {
-            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[], logs: res.logs }
+            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[], logs: decodeLogs(res.logs) }
         }
 
         if (res.data_cell) {
@@ -148,7 +151,7 @@ export class SmartContract {
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
             action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined,
-            logs: Buffer.from(res.logs, 'base64').toString()
+            logs: decodeLogs(res.logs)
         }
     }
 
@@ -173,11 +176,11 @@ export class SmartContract {
                 {type: 'cell_slice', value: await cellToBoc(bodyCell)}, // body slice
             ],
             'recv_external',
-            { time: this.time }
+            this.getC7()
         )
 
         if (res.exit_code !== 0) {
-            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[], logs: res.logs }
+            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[], logs: decodeLogs(res.logs) }
         }
 
         if (res.data_cell) {
@@ -192,12 +195,28 @@ export class SmartContract {
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
             action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined,
-            logs: Buffer.from(res.logs, 'base64').toString()
+            logs: decodeLogs(res.logs)
         }
     }
 
     setUnixTime(time: number) {
-        this.time = time
+        this.c7Config.unixtime = time
+    }
+
+    setC7Config(conf: C7Config) {
+        this.c7Config = conf
+    }
+
+    setC7(c7: TVMStackEntryTuple) {
+        this.c7 = c7
+    }
+
+    getC7() {
+        if (this.c7) {
+            return this.c7
+        } else {
+            return buildC7(this.c7Config)
+        }
     }
 
     static async fromFuncSource(source: string, dataCell: Cell, config?: SmartContractConfig) {
