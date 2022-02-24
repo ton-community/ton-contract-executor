@@ -1,5 +1,4 @@
-// const VmExec: any = require('../vm-exec/vm-exec')
-const VmExec: any = require('/Users/altox/Desktop/ton/build/crypto/vm-exec.js')
+const VmExec: any = require('../vm-exec/vm-exec')
 
 let vmExecInitialized = false
 let onVmExecInit = () => {}
