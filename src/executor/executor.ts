@@ -1,4 +1,4 @@
-import {Address, Cell} from "ton";
+import {Address, Cell, Slice} from "ton";
 import {crc16} from "../utils/crc16";
 import {initializeVmExec, vm_exec} from '../vm-exec/vmExec'
 import {randomBytes} from "crypto";
@@ -40,6 +40,7 @@ const makeIntEntry = (value: number|BN): TVMStackEntryInt => ({ type: 'int', val
 const makeTuple = (items: TVMStackEntry[]): TVMStackEntryTuple => ({ type: 'tuple', value: items})
 const makeNull = (): TVMStackEntryNull => ({ type: 'null' })
 const makeCell = (cell: Cell): TVMStackEntryCell => ({ type: 'cell', value: cell.toBoc({ idx: false }).toString('base64') })
+const makeSlice = (cell: Cell): TVMStackEntryCellSlice => ({ type: 'cell_slice', value: cell.toBoc({ idx: false }).toString('base64') })
 
 export type C7Config = {
     unixtime?: number,
@@ -72,8 +73,12 @@ export function buildC7(config: C7Config) {
         ...config
     }
 
+    // addr_std$10 anycast:(Maybe Anycast)
+    //    workchain_id:int8 address:bits256  = MsgAddressInt;
     // workchain_id:int8 address:bits256  = MsgAddressInt;
-    let address = makeTuple([makeIntEntry(currentConfig.myself.workChain),makeIntEntry(new BN(currentConfig.myself.hash))])
+    let addressCell = new Cell()
+    addressCell.bits.writeAddress(currentConfig.myself)
+
     // [Integer (Maybe Cell)]
     let balance = makeTuple([makeIntEntry(currentConfig.balance), makeNull()])
 
@@ -87,7 +92,7 @@ export function buildC7(config: C7Config) {
             makeIntEntry(currentConfig.transLt),      // trans_lt:Integer
             makeIntEntry(currentConfig.randSeed),     // rand_seed:Integer
             balance,                                  // balance_remaining:[Integer (Maybe Cell)]
-            address,                                  // myself:MsgAddressInt
+            makeSlice(addressCell),                   // myself:MsgAddressInt
             makeCell(currentConfig.globalConfig),     // global_config:(Maybe Cell) ] = SmartContractInfo;
         ])
     ])
