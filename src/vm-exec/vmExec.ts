@@ -25,5 +25,7 @@ export function vm_exec(config: string) {
     let out = {
         result: VmExec.UTF8ToString(res)
     }
+    VmExec._free(ref)
+    VmExec._free(res)
     return out
 }
