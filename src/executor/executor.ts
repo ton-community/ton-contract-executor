@@ -15,6 +15,7 @@ export type TVMConfig = {
 export type TVMStack = TVMStackEntry[]
 
 export type TVMExecutionResult = {
+    ok: true,
     exit_code: number,           // TVM Exit code
     gas_consumed: number,
     stack?: TVMStack,            // TVM Resulting stack
@@ -22,6 +23,8 @@ export type TVMExecutionResult = {
     action_list_cell?: string    // base64 encoded BOC
     logs: string
 }
+
+export type TVMExecutionResultInternal = TVMExecutionResult | {  ok: false, error: string }
 
 export type TVMStackEntry =
     | TVMStackEntryNull
@@ -98,7 +101,19 @@ export function buildC7(config: C7Config) {
     ])
 }
 
-export async function runTVM(config: TVMConfig): Promise<TVMExecutionResult> {
+async function runTvmDarwinArm64(config: TVMConfig): Promise<TVMExecutionResultInternal> {
+    let module: any = require('../../native/vm-exec-darwin-arm64')
+    return new Promise(resolve => {
+        module.executeVm(JSON.stringify(config), (err: any, res: any) => {
+            resolve(JSON.parse(res))
+        })
+    })
+}
+
+export async function runTVM(config: TVMConfig): Promise<TVMExecutionResultInternal> {
+    if (process.platform === 'darwin' && process.arch === 'arm64') {
+        return runTvmDarwinArm64(config);
+    }
     await initializeVmExec()
     let {result} = await vm_exec(JSON.stringify(config))
     return JSON.parse(result)
@@ -113,7 +128,11 @@ export async function runContract(code: Cell, dataCell: Cell, stack: TVMStack, m
         data,
         c7_register: c7
     }
-    return await runTVM(executorConfig)
+    let res = await runTVM(executorConfig)
+    if (res.ok === false) {
+        throw new Error('Cant execute vm: ' + res.error)
+    }
+    return res
 }
 
 export function getSelectorForMethod(methodName: string) {
