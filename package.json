@@ -1,6 +1,6 @@
 {
   "name": "ton-contract-executor",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "TON Contracts local executor",
   "main": "dist/index.js",
   "repository": "https://github.com/tonwhales/ton-contract-executor",
@@ -17,6 +17,7 @@
     "@types/bn.js": "^5.1.0",
     "@types/jest": "^27.0.3",
     "@types/node": "^16.11.10",
+    "copyfiles": "^2.4.1",
     "jest": "^27.3.1",
     "typescript": "^4.5.2"
   },
@@ -27,6 +28,7 @@
   },
   "scripts": {
     "copy:wasm": "cp ./src/vm-exec/vm-exec.js ./dist/vm-exec/vm-exec.js && cp ./src/vm-exec/vm-exec.wasm ./dist/vm-exec/vm-exec.wasm",
-    "release": "rm -fr dist && tsc && yarn copy:wasm && jest && yarn publish"
+    "copy:native": "copyfiles src/native/**/* ./dist/ && copyfiles src/lib/**/*/** ./dist/",
+    "release": "rm -fr dist && tsc && yarn copy:native && yarn copy:wasm && jest && yarn publish"
   }
 }

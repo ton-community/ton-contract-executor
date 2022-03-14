@@ -102,7 +102,7 @@ export function buildC7(config: C7Config) {
 }
 
 async function runTvmDarwinArm64(config: TVMConfig): Promise<TVMExecutionResultInternal> {
-    let module: any = require('../../native/vm-exec-darwin-arm64')
+    let module: any = require('../native/vm-exec-darwin-arm64')
     return new Promise(resolve => {
         module.executeVm(JSON.stringify(config), (err: any, res: any) => {
             resolve(JSON.parse(res))
