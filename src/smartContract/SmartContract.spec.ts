@@ -259,4 +259,20 @@ describe('SmartContract', () => {
 
         expect(contract.codeCell.equals(new Cell())).toBe(true)
     })
+
+    it('should handle exceptions', async () => {
+        const source = `
+            () main() {
+                ;; noop
+            }
+
+            int test() method_id {
+                throw(777);
+                return 777;
+            }
+        `
+        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let res = await contract.invokeGetMethod('test', [])
+        expect(res.exit_code).toEqual(777)
+    })
 })

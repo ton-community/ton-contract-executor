@@ -117,7 +117,7 @@ export class SmartContract {
 
         // In this case probably there wa something wrong with executor config
         if (!res.ok && res.error) {
-            throw new Error(`Cant execute vm: ${res.error}`)
+            throw new Error(`Cant execute vm: ${res.error}}`)
         }
 
         // In this case TVM failed
