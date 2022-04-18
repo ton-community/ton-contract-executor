@@ -3,7 +3,7 @@
   "version": "0.4.5",
   "description": "TON Contracts local executor",
   "main": "dist/index.js",
-  "repository": "https://github.com/tonwhales/ton-contract-executor",
+  "repository": "http://github.com/Naltox/ton-contract-executor/",
   "author": "Narek Abovyan <xeroxaltox@gmail.com>",
   "license": "MIT",
   "files": [
@@ -30,6 +30,6 @@
   "scripts": {
     "copy:wasm": "cp ./src/vm-exec/vm-exec.js ./dist/vm-exec/vm-exec.js && cp ./src/vm-exec/vm-exec.wasm ./dist/vm-exec/vm-exec.wasm",
     "copy:native": "copyfiles -u 1 ./src/native/**/* ./dist/ && copyfiles -u 1 ./src/lib/**/*/** ./dist/",
-    "release": "rm -fr dist && tsc && yarn copy:native && yarn copy:wasm && jest && yarn publish"
+    "release": "rm -fr dist && tsc && yarn copy:native && yarn copy:wasm && jest ./src && yarn publish"
   }
 }
