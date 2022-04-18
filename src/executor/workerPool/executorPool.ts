@@ -6,10 +6,8 @@ type WorkerResponseMessage = {
     result: TVMExecutionResult
 }
 
-const isJest = () => !!process.env.JEST_WORKER_ID
-
 const getWorker = () => {
-    if (isJest()) {
+    if (__filename.endsWith('.ts')) {
         return new Worker(__dirname + '/worker.js', {
             workerData: {
                 path: './executorWorker.ts'
