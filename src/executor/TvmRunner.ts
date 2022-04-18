@@ -1,5 +1,5 @@
 import {runTVM, TVMExecuteConfig, TVMExecutionResult} from "./executor";
-import {ExecutorPool} from "./worker_pool/executorPool";
+import {ExecutorPool} from "./workerPool/executorPool";
 import * as os from "os";
 
 export interface TvmRunner {
