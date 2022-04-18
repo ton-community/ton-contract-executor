@@ -1,15 +1,11 @@
-import {bocToCell, cellToBoc, SmartContract} from "./SmartContract";
+import {SmartContract} from "./SmartContract";
 import {Address, Cell, CellMessage, CommonMessageInfo, ExternalMessage, InternalMessage, Slice, toNano} from "ton";
 import {
-    getSelectorForMethod,
-    runTVM,
-    TVMStack,
-    TVMStackEntryCell,
-    TVMStackEntryInt,
     TVMStackEntryTuple
-} from "./executor";
+} from "../executor/executor";
 import BN from "bn.js";
-import exp from "constants";
+import {cellToBoc} from "../utils/cell";
+import {SendMsgAction} from "../utils/parseActionList";
 
 describe('SmartContract', () => {
     it('should run basic contract', async () => {
@@ -43,7 +39,7 @@ describe('SmartContract', () => {
         let cell = new Cell()
         cell.bits.writeUint(0xFFFFFFFF, 32)
 
-        let res = await contract.invokeGetMethod('test', [{type: 'cell', value: await cellToBoc(cell)}])
+        let res = await contract.invokeGetMethod('test', [{type: 'cell', value: cellToBoc(cell) }])
 
         expect(res.result[0]).toBeInstanceOf(Cell)
         expect((res.result[0] as Cell).toString()).toEqual(cell.toString())
@@ -206,13 +202,61 @@ describe('SmartContract', () => {
         expect(resBody.toCell().toString()).toEqual(bodyCell.toString())
     })
 
+    it('should return actions', async () => {
+        const source = `
+            () send_money(slice address, int amount) impure inline {
+                var msg = begin_cell()
+                    .store_uint(0x10, 6) ;; nobounce
+                    .store_slice(address)
+                    .store_grams(amount)
+                    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                    .end_cell();
+            
+                send_raw_message(msg, 64);
+            }    
+                     
+            () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) {
+                slice cs = in_msg_full.begin_parse();
+                int flags = cs~load_uint(4);
+                slice sender_address = cs~load_msg_addr();    
+                send_money(sender_address, 1);
+                return ();
+            }
+        `
 
-    it('123', async () => {
-        let code = Cell.fromBoc(Buffer.from('te6cckECEwEAAf4AART/APSkE/S88sgLAQIBYgIDAgLNBAUCASANDgIBIAYHAgFICwwD7UIMcAkVvgAdDTAwFxsJFb4PpAMO1E0PpA0z/U1NQwBtMf0z+CEGk9OVBSMLqOKRZfBgLQEoIQqMsArXCAEMjLBVAFzxYk+gIUy2oTyx/LPwHPFsmAQPsA4DFRZccF8uGRIMAB4wIgwALjAjQDwAPjAl8FhA/y8ICAkKAC1QHIyz/4KM8WyXAgyMsBE/QA9ADLAMmABiMATTP1MTu/LhklMTugH6ANQwJxA0WfAFjhMBpEQzAshQBc8WE8s/zMzMye1Ukl8F4gCiMHAF1DCON4BA9JZvpSCOKQikIIEA+r6T8sGP3oEBkyGgUye78vQC+gDUMCJURjDwBSW6kwSkBN4Gkmwh4rPmMDRANMhQBc8WE8s/zMzMye1UACgD+kAwQzTIUAXPFhPLP8zMzMntVAAbPkAdMjLAhLKB8v/ydCAAPRa8ANwIfAEd4AYyMsFWM8WUAT6AhPLaxLMzMlx+wCACASAPEAAlvILfaiaH0gaZ/qamoYLehqGCxABDuLXTHtRND6QNM/1NTUMBAkXwTQ1DHUMNBxyMsHAc8WzMmAIBIBESAC+12v2omh9IGmf6mpqGDYg6GmH6Yf9IBhAALbT0faiaH0gaZ/qamoYCi+CeAG4APgCQFlTuZA==', 'base64'))[0]
-        let data = Cell.fromBoc(Buffer.from('te6cckECEAEAAjEAA1OAELqUWZGOV7pY/Xe2uVyCHyPk9dz7nCpp12KwXLj2+N0AAAAAAAAAAJABAgMCAAQFART/APSkE/S88sgLBgBLABkD6IAQupRZkY5Xulj9d7a5XIIfI+T13PucKmnXYrBcuPb43RAAbAFpcGZzOi8vUW1ZbkN4YXRvUXhDNXFYS3l3OXFlZ2hBWFNibzVEZE5qMjh2MUh2aUN6RzVTWQAAAgFiBwgCAs4JCgAJoR+f4AMCASALDAAdQDyMs/WM8WAc8WzMntVIAqMMiHHAJJfA+DQ0wMBcbCSXwPg+kAw8AEEs44RMDI0UgLHBfLhlQH6QNQw8ALgBdMf0z+CEF/MPRRSMLrjAjA0NTWCEC/LJqIUuuMCXwSED/LwgDQ4AOztRNDTP/pAINdJwgCafwH6QNQwECQQI+AwcFltbYAH8MhA2XiIBUSTHBfLhkQH6QPpA0gAx+gCCCvrwgBqhIaEgwgDy4ZIhjj6CEAUTjZHIUAjPFlAKzxZxJEgUVEaQcIAQyMsFUAfPFlAF+gIVy2oSyx/LPyJus5RYzxcBkTLiAckB+wAQNpQQKTZb4ibXCwHDAJQQJmwx4w1VAvACDwB2cIIQi3cXNQTIy/9QBc8WECQQI4BAcIAQyMsFUAfPFlAF+gIVy2oSyx/LPyJus5RYzxcBkTLiAckB+wAAZIIQ1TJ22xA3RARtcXCAEMjLBVAHzxZQBfoCFctqEssfyz8ibrOUWM8XAZEy4gHJAfsAbyu4Ig==', 'base64'))[0]
+        let contract = await SmartContract.fromFuncSource(source, new Cell())
 
-        let contract = await SmartContract.fromCell(code, data)
-        let res = await contract.invokeGetMethod('get_nft_address_by_index', [{ type: 'int', value: '1' }])
-        console.log(res)
+        let res = await contract.sendInternalMessage(new InternalMessage({
+            to: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
+            value: toNano(1),
+            bounce: false,
+            body: new CommonMessageInfo({
+                body: new CellMessage(new Cell())
+            })
+        }))
+        expect(res.actionList).toHaveLength(1)
+        let msgAction = res.actionList[0] as SendMsgAction
+        expect(msgAction.type).toEqual('send_msg')
+        expect(msgAction.mode).toEqual(64)
+    })
+
+    it('should handle code change', async () => {
+        const source = `      
+            () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) {
+                set_code(begin_cell().end_cell());
+                return ();
+            }
+        `
+        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let res = await contract.sendInternalMessage(new InternalMessage({
+            to: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
+            value: toNano(1),
+            bounce: false,
+            body: new CommonMessageInfo({
+                body: new CellMessage(new Cell())
+            })
+        }))
+
+        expect(contract.codeCell.equals(new Cell())).toBe(true)
     })
 })

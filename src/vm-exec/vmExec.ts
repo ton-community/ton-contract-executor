@@ -1,31 +1,32 @@
+import {TVMExecuteConfig} from "../executor/executor";
+
 const VmExec: any = require('../vm-exec/vm-exec')
 
-let vmExecInitialized = false
-let onVmExecInit = () => {}
+let instance: any = null
+let isInitializing = false
+let waiters: ((instance: any) => unknown)[] = []
 
-VmExec.onRuntimeInitialized = () => {
-    vmExecInitialized = true
-    onVmExecInit()
-}
-
-export async function initializeVmExec() {
-    if (vmExecInitialized) {
-        return
+async function getInstance() {
+    if (instance) {
+        return instance
     }
 
-    await new Promise<void>(resolve => {
-        onVmExecInit = resolve
-    })
+    if (isInitializing) {
+        return new Promise<any>(resolve => waiters.push(resolve))
+    }
+
+    isInitializing = true
+    instance = await VmExec()
+    return instance
 }
 
-export function vm_exec(config: string) {
-    let bytes = VmExec.intArrayFromString(config)
-    let ref = VmExec.allocate(bytes, VmExec.ALLOC_NORMAL)
-    let res = VmExec._vm_exec(bytes.length - 1, ref)
-    let out = {
-        result: VmExec.UTF8ToString(res)
-    }
-    VmExec._free(ref)
-    VmExec._free(res)
-    return out
+export async function vm_exec(config: TVMExecuteConfig) {
+    let vmInstance = await getInstance()
+    let bytes = vmInstance.intArrayFromString(JSON.stringify(config))
+    let ref = vmInstance.allocate(bytes, VmExec.ALLOC_NORMAL)
+    let res = vmInstance._vm_exec(bytes.length - 1, ref)
+    let out = vmInstance.UTF8ToString(res)
+    vmInstance._free(ref)
+    vmInstance._free(res)
+    return JSON.parse(out)
 }

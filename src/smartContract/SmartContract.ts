@@ -7,17 +7,12 @@ import {
     TVMStack,
     TVMStackEntry,
     TVMStackEntryTuple
-} from "./executor";
+} from "../executor/executor";
 import {compileFunc} from "ton-compiler";
 import BN from "bn.js";
-
-export const cellToBoc = async (cell: Cell) => {
-    return (await cell.toBoc({idx: false})).toString('base64')
-}
-
-export const bocToCell = (boc: string) => {
-    return Cell.fromBoc(Buffer.from(boc, 'base64'))[0]
-}
+import {bocToCell, cellToBoc} from "../utils/cell";
+import {TvmRunner, TvmRunnerAsynchronous} from "../executor/TvmRunner";
+import {OutAction, parseActionsList, SetCodeAction} from "../utils/parseActionList";
 
 type NormalizedStackEntry =
     | null
@@ -52,12 +47,19 @@ async function normalizeTvmStack(stack: TVMStack) {
 type SmartContractConfig = {
     // Whether or not get methods should update smc data, false by default (useful for debug)
     getMethodsMutate: boolean
+    // Return debug logs
+    debug: boolean
+    // Tvm runner for execution
+    runner: TvmRunner
 }
 
 type FailedExecutionResult = {
     type: 'failed'
     exit_code: number
+    gas_consumed: number,
     result: NormalizedStackEntry[]
+    actionList: OutAction[],
+    action_list_cell?: Cell
     logs: string
 }
 
@@ -66,6 +68,7 @@ type SuccessfulExecutionResult = {
     exit_code: number,
     gas_consumed: number,
     result:  NormalizedStackEntry[],
+    actionList: OutAction[],
     action_list_cell?: Cell
     logs: string
 }
@@ -88,38 +91,60 @@ export class SmartContract {
     private c7Config: C7Config = {}
     private c7: TVMStackEntryTuple|null = null
 
-    private constructor(codeCell: Cell, dataCell: Cell, config?: SmartContractConfig) {
+    private constructor(codeCell: Cell, dataCell: Cell, config?: Partial<SmartContractConfig>) {
         this.codeCell = codeCell
         this.dataCell = dataCell
-        this.codeCellBoc = codeCell.toBoc({ idx: false }).toString('base64')
-        this.dataCellBoc = dataCell.toBoc({ idx: false }).toString('base64')
-        this.config = config || { getMethodsMutate: false }
+        this.codeCellBoc = cellToBoc(codeCell)
+        this.dataCellBoc = cellToBoc(dataCell)
+
+        this.config = {
+            getMethodsMutate: config?.getMethodsMutate ?? false,
+            debug: config?.debug ?? false,
+            runner: TvmRunnerAsynchronous.getShared()
+        }
     }
 
-    private async runContract(method: string, stack: TVMStack) {
+    private async runContract(method: string, stack: TVMStack, opts: { mutateData: boolean, mutateCode: boolean }): Promise<ExecutionResult> {
         let executorConfig = {
+            debug: this.config.debug,
             function_selector: getSelectorForMethod(method),
             init_stack: stack,
             code: this.codeCellBoc,
             data: this.dataCellBoc,
             c7_register: this.getC7()
         }
-        let res = await runTVM(executorConfig)
-        if (res.ok === false) {
-            throw new Error('Cant execute vm: ' + res.error)
-        }
-        return res
-    }
+        let res = await this.config.runner.invoke(executorConfig)
 
-    async invokeGetMethod(method: string, args: TVMStack): Promise<ExecutionResult> {
-        let res = await this.runContract(method, args)
-
-        if (res.exit_code !== 0) {
-            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[], logs: decodeLogs(res.logs) }
+        // In this case probably there wa something wrong with executor config
+        if (!res.ok && res.error) {
+            throw new Error(`Cant execute vm: ${res.error}`)
         }
 
-        if (this.config.getMethodsMutate && res.data_cell) {
+        // In this case TVM failed
+        if (res.exit_code !== 0 || !res.ok) {
+            let logs = res.logs ? decodeLogs(res.logs) : ''
+
+            return {
+                type: 'failed',
+                exit_code: res.exit_code!,
+                gas_consumed: 0,
+                result: [] as NormalizedStackEntry[],
+                action_list_cell: undefined,
+                actionList: [],
+                logs: logs,
+            }
+        }
+
+        if (opts?.mutateData && res.data_cell) {
             this.setDataCell(bocToCell(res.data_cell))
+        }
+
+        let actionListCell = bocToCell(res.action_list_cell)
+        let actionList = parseActionsList(actionListCell)
+
+        let setCode = actionList.find(a => a.type === 'set_code')
+        if (setCode && opts?.mutateCode) {
+            this.setCodeCell((setCode as SetCodeAction).newCode)
         }
 
         return {
@@ -127,9 +152,17 @@ export class SmartContract {
             exit_code: res.exit_code,
             gas_consumed: res.gas_consumed,
             result: await normalizeTvmStack(res.stack || []),
-            action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined,
-            logs: decodeLogs(res.logs)
+            action_list_cell: actionListCell,
+            logs: decodeLogs(res.logs),
+            actionList
         }
+    }
+
+    async invokeGetMethod(method: string, args: TVMStack): Promise<ExecutionResult> {
+        return await this.runContract(method, args, {
+            mutateData: this.config.getMethodsMutate,
+            mutateCode: this.config.getMethodsMutate
+        })
     }
 
     async sendInternalMessage(message: InternalMessage): Promise<ExecutionResult> {
@@ -143,31 +176,12 @@ export class SmartContract {
         let bodyCell = new Cell()
         message.body.body.writeTo(bodyCell)
 
-        let res = await this.runContract('recv_internal', [
-            {type: 'int', value: '1000'},                           // smc_balance
-            {type: 'int', value: message.value.toString(10)}, // msg_value
-            {type: 'cell', value: await cellToBoc(msgCell)},        // msg cell
-            {type: 'cell_slice', value: await cellToBoc(bodyCell)}, // body slice
-        ])
-
-        if (res.exit_code !== 0) {
-            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[], logs: decodeLogs(res.logs) }
-        }
-
-        if (res.data_cell) {
-            this.setDataCell(bocToCell(res.data_cell))
-        }
-
-        // TODO: handle code update
-
-        return {
-            type: 'success',
-            exit_code: res.exit_code,
-            gas_consumed: res.gas_consumed,
-            result: await normalizeTvmStack(res.stack || []),
-            action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined,
-            logs: decodeLogs(res.logs)
-        }
+        return await this.runContract('recv_internal', [
+            {type: 'int', value: message.value.toString(10)},   // smc_balance
+            {type: 'int', value: message.value.toString(10)},   // msg_value
+            {type: 'cell', value: await cellToBoc(msgCell)},          // msg cell
+            {type: 'cell_slice', value: await cellToBoc(bodyCell)},   // body slice
+        ], { mutateCode: true, mutateData: true })
     }
 
     async sendExternalMessage(message: ExternalMessage): Promise<ExecutionResult> {
@@ -181,31 +195,12 @@ export class SmartContract {
         let bodyCell = new Cell()
         message.body.body.writeTo(bodyCell)
 
-        let res = await this.runContract('recv_external', [
+        return await this.runContract('recv_external', [
             {type: 'int', value: '1000'},                           // smc_balance
             {type: 'int', value: '0'},                              // msg_value
             {type: 'cell', value: await cellToBoc(msgCell)},        // msg cell
             {type: 'cell_slice', value: await cellToBoc(bodyCell)}, // body slice
-        ])
-
-        if (res.exit_code !== 0) {
-            return { type: 'failed', exit_code: res.exit_code, result: [] as NormalizedStackEntry[], logs: decodeLogs(res.logs) }
-        }
-
-        if (res.data_cell) {
-            this.setDataCell(bocToCell(res.data_cell))
-        }
-
-        // TODO: handle code update
-
-        return {
-            type: 'success',
-            exit_code: res.exit_code,
-            gas_consumed: res.gas_consumed,
-            result: await normalizeTvmStack(res.stack || []),
-            action_list_cell: res.action_list_cell ? bocToCell(res.action_list_cell) : undefined,
-            logs: decodeLogs(res.logs)
-        }
+        ], { mutateCode: true, mutateData: true })
     }
 
     setUnixTime(time: number) {
@@ -230,15 +225,20 @@ export class SmartContract {
 
     setDataCell(dataCell: Cell) {
         this.dataCell = dataCell
-        this.dataCellBoc = dataCell.toBoc({ idx: false }).toString('base64')
+        this.dataCellBoc = cellToBoc(dataCell)
     }
 
-    static async fromFuncSource(source: string, dataCell: Cell, config?: SmartContractConfig) {
+    setCodeCell(codeCell: Cell) {
+        this.codeCell = codeCell
+        this.codeCellBoc = cellToBoc(codeCell)
+    }
+
+    static async fromFuncSource(source: string, dataCell: Cell, config?: Partial<SmartContractConfig>) {
         let compiledSource = await compileFunc(source)
         return new SmartContract(Cell.fromBoc(compiledSource.cell)[0], dataCell, config)
     }
 
-    static async fromCell(codeCell: Cell, dataCell: Cell, config?: SmartContractConfig) {
+    static async fromCell(codeCell: Cell, dataCell: Cell, config?: Partial<SmartContractConfig>) {
         return new SmartContract(codeCell, dataCell, config)
     }
 }

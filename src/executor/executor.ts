@@ -1,10 +1,13 @@
 import {Address, Cell, Slice} from "ton";
 import {crc16} from "../utils/crc16";
-import {initializeVmExec, vm_exec} from '../vm-exec/vmExec'
+import {vm_exec} from '../vm-exec/vmExec'
 import {randomBytes} from "crypto";
 import BN from "bn.js";
+import {TvmRunner} from "./TvmRunner";
+import {cellToBoc} from "../utils/cell";
 
-export type TVMConfig = {
+export type TVMExecuteConfig = {
+    debug: boolean
     function_selector: number,
     init_stack: TVMStack,
     code: string,               // base64 encoded TVM fift assembly
@@ -14,17 +17,26 @@ export type TVMConfig = {
 
 export type TVMStack = TVMStackEntry[]
 
-export type TVMExecutionResult = {
+export type TVMExecutionResultOk = {
     ok: true,
     exit_code: number,           // TVM Exit code
     gas_consumed: number,
-    stack?: TVMStack,            // TVM Resulting stack
-    data_cell?: string           // base64 encoded BOC
-    action_list_cell?: string    // base64 encoded BOC
+    stack: TVMStack,            // TVM Resulting stack
+    data_cell: string           // base64 encoded BOC
+    action_list_cell: string    // base64 encoded BOC
     logs: string
 }
 
-export type TVMExecutionResultInternal = TVMExecutionResult | {  ok: false, error: string }
+export type TVMExecutionResultFail = {
+    ok: false,
+    error?: string
+    exit_code?: number,
+    logs?: string
+}
+
+export type TVMExecutionResult =
+    | TVMExecutionResultOk
+    | TVMExecutionResultFail
 
 export type TVMStackEntry =
     | TVMStackEntryNull
@@ -42,8 +54,8 @@ export type TVMStackEntryTuple = { type: 'tuple', value: TVMStackEntry[] }
 const makeIntEntry = (value: number|BN): TVMStackEntryInt => ({ type: 'int', value: value.toString(10) })
 const makeTuple = (items: TVMStackEntry[]): TVMStackEntryTuple => ({ type: 'tuple', value: items})
 const makeNull = (): TVMStackEntryNull => ({ type: 'null' })
-const makeCell = (cell: Cell): TVMStackEntryCell => ({ type: 'cell', value: cell.toBoc({ idx: false }).toString('base64') })
-const makeSlice = (cell: Cell): TVMStackEntryCellSlice => ({ type: 'cell_slice', value: cell.toBoc({ idx: false }).toString('base64') })
+const makeCell = (cell: Cell): TVMStackEntryCell => ({ type: 'cell', value: cellToBoc(cell) })
+const makeSlice = (cell: Cell): TVMStackEntryCellSlice => ({ type: 'cell_slice', value: cellToBoc(cell) })
 
 export type C7Config = {
     unixtime?: number,
@@ -61,6 +73,7 @@ export function buildC7(config: C7Config) {
     let now = Math.floor(Date.now() / 1000)
 
     let seed = randomBytes(32)
+
     let seedInt = new BN(seed)
 
     let currentConfig: Required<C7Config> = {
@@ -101,37 +114,47 @@ export function buildC7(config: C7Config) {
     ])
 }
 
-async function runTvmDarwinArm64(config: TVMConfig): Promise<TVMExecutionResultInternal> {
-    let module: any = require('../native/vm-exec-darwin-arm64')
-    return new Promise(resolve => {
-        module.executeVm(JSON.stringify(config), (err: any, res: any) => {
-            resolve(JSON.parse(res))
-        })
-    })
+export async function runTVM(config: TVMExecuteConfig): Promise<TVMExecutionResult> {
+    return await vm_exec(config)
 }
 
-export async function runTVM(config: TVMConfig): Promise<TVMExecutionResultInternal> {
-    if (process.platform === 'darwin' && process.arch === 'arm64') {
-        return runTvmDarwinArm64(config);
-    }
-    await initializeVmExec()
-    let {result} = await vm_exec(JSON.stringify(config))
-    return JSON.parse(result)
+export type RunContractConfig = {
+    code: Cell,
+    dataCell: Cell,
+    stack: TVMStack,
+    method: string,
+    c7: TVMStackEntryTuple,
+    debug: boolean
+    executor?: TvmRunner
 }
 
-export async function runContract(code: Cell, dataCell: Cell, stack: TVMStack, method: string, c7: TVMStackEntryTuple): Promise<TVMExecutionResult> {
-    let data = (await dataCell.toBoc({idx: false})).toString('base64')
+export async function runContract(config: RunContractConfig): Promise<TVMExecutionResult> {
+    let {
+        code,
+        dataCell,
+        stack,
+        method,
+        c7,
+        debug,
+        executor
+    } = config
+
     let executorConfig = {
+        debug,
         function_selector: getSelectorForMethod(method),
         init_stack: stack,
-        code: (await code.toBoc({ idx: false })).toString('base64'),
-        data,
+        code: cellToBoc(code),
+        data: cellToBoc(dataCell),
         c7_register: c7
     }
-    let res = await runTVM(executorConfig)
-    if (res.ok === false) {
-        throw new Error('Cant execute vm: ' + res.error)
+
+    let res
+    if (!executor) {
+        res = await runTVM(executorConfig)
+    } else {
+        res = await executor.invoke(executorConfig)
     }
+
     return res
 }
 
