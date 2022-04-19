@@ -41,6 +41,7 @@ export class ExecutorPool {
             throw new Error('No callback was found for response: ' + JSON.stringify(message))
         }
         cb(message.result)
+        this.tasks.delete(message.id)
     }
 
     execute(config: TVMExecuteConfig): Promise<TVMExecutionResult> {

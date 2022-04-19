@@ -17,6 +17,8 @@ async function getInstance() {
 
     isInitializing = true
     instance = await VmExec()
+    // Notify all waiters
+    waiters.map(w => w(instance))
     return instance
 }
 
