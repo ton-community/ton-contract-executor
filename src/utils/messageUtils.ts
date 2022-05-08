@@ -5,7 +5,7 @@ export function readCurrencyCollection(slice: Slice): RawCurrencyCollection {
     if (slice.readBit()) {
         throw Error('Currency collctions are not supported yet');
     }
-    return { coins };
+    return { coins, extraCurrencies: null };
 }
 
 function readCommonMsgInfo(slice: Slice): RawCommonMessageInfo {
@@ -77,7 +77,7 @@ function readStateInit(slice: Slice) {
         throw Error('Unsupported');
     }
 
-    return { data, code };
+    return { data, code, special: null, splitDepth: null };
 }
 
 export function readMessage(slice: Slice): RawMessage {
