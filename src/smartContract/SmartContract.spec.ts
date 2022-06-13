@@ -154,7 +154,7 @@ describe('SmartContract', () => {
             }
         `
         let contract = await SmartContract.fromFuncSource(source, new Cell())
-        contract.setBalance(777)
+        contract.setBalance(new BN(777))
         let res = await contract.invokeGetMethod('my_balance', [])
 
         expect(res.result[0]).toBeInstanceOf(BN)
@@ -170,9 +170,7 @@ describe('SmartContract', () => {
         `
 
         let contract = await SmartContract.fromFuncSource(source, new Cell())
-        contract.setC7Config({
-            balance: 500,
-        })
+        contract.setBalance(new BN(500));
         let bodyCell = new Cell()
         bodyCell.bits.writeUint(777, 256)
 

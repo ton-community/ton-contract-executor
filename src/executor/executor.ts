@@ -59,7 +59,7 @@ const makeSlice = (cell: Cell): TVMStackEntryCellSlice => ({ type: 'cell_slice',
 
 export type C7Config = {
     unixtime?: number,
-    balance?: number,
+    balance?: BN,
     myself?: Address,
     randSeed?: BN
     actions?: number
@@ -78,7 +78,7 @@ export function buildC7(config: C7Config) {
 
     let currentConfig: Required<C7Config> = {
         unixtime: now,
-        balance: 1000,
+        balance: new BN(1000),
         myself: new Address(0, Buffer.alloc(256 / 8)),
         randSeed: seedInt,
         actions: 0,
