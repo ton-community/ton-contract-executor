@@ -142,14 +142,37 @@ describe('SmartContract', () => {
         expect(res.result[0]).toEqual(new BN(now))
     })
 
+    it('should handle custom balance', async () => {
+        const source = `
+            () main() {
+                ;; noop
+            }
+
+            int my_balance() method_id {
+                [int res, cell a] = get_balance();
+                return res;
+            }
+        `
+        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        contract.setBalance(777)
+        let res = await contract.invokeGetMethod('my_balance', [])
+
+        expect(res.result[0]).toBeInstanceOf(BN)
+        expect(res.result[0]).toEqual(new BN(777))
+    })
+
     it('should handle internal messages', async () => {
         const source = `
             (cell, slice) recv_internal(int smc_balance, int msg_value, cell msg, slice msg_body) {
+                throw_if(403, smc_balance != 1000000500);
                 return (msg, msg_body);
             }
         `
 
         let contract = await SmartContract.fromFuncSource(source, new Cell())
+        contract.setC7Config({
+            balance: 500,
+        })
         let bodyCell = new Cell()
         bodyCell.bits.writeUint(777, 256)
 
@@ -166,6 +189,7 @@ describe('SmartContract', () => {
         msg.writeTo(msgCell)
 
         let res = await contract.sendInternalMessage(msg)
+        expect(res.exit_code).toEqual(0)
         let [resCell, resBody] = res.result as [Cell, Slice]
         expect(resCell.toString()).toEqual(msgCell.toString())
         expect(resBody.toCell().toString()).toEqual(bodyCell.toString())
