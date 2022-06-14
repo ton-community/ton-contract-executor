@@ -177,7 +177,7 @@ export class SmartContract {
         message.body.body.writeTo(bodyCell)
 
         return await this.runContract('recv_internal', [
-            {type: 'int', value: message.value.toString(10)},   // smc_balance
+            {type: 'int', value: (this.c7Config.balance ? this.c7Config.balance : new BN(0)).add(message.value).toString(10)},   // smc_balance
             {type: 'int', value: message.value.toString(10)},   // msg_value
             {type: 'cell', value: await cellToBoc(msgCell)},          // msg cell
             {type: 'cell_slice', value: await cellToBoc(bodyCell)},   // body slice
@@ -205,6 +205,10 @@ export class SmartContract {
 
     setUnixTime(time: number) {
         this.c7Config.unixtime = time
+    }
+
+    setBalance(value: BN) {
+        this.c7Config.balance = value
     }
 
     setC7Config(conf: C7Config) {
