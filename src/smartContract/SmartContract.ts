@@ -67,7 +67,7 @@ type SuccessfulExecutionResult = {
     type: 'success',
     exit_code: number,
     gas_consumed: number,
-    result:  NormalizedStackEntry[],
+    result: NormalizedStackEntry[],
     actionList: OutAction[],
     action_list_cell?: Cell
     logs: string
@@ -89,7 +89,7 @@ export class SmartContract {
     private dataCellBoc: string
     private config: SmartContractConfig
     private c7Config: C7Config = {}
-    private c7: TVMStackEntryTuple|null = null
+    private c7: TVMStackEntryTuple | null = null
 
     private constructor(codeCell: Cell, dataCell: Cell, config?: Partial<SmartContractConfig>) {
         this.codeCell = codeCell
@@ -176,12 +176,15 @@ export class SmartContract {
         let bodyCell = new Cell()
         message.body.body.writeTo(bodyCell)
 
+
+        let smcBalance = (this.c7Config.balance ?? new BN(0)).add(message.value)
+
         return await this.runContract('recv_internal', [
-            {type: 'int', value: (this.c7Config.balance ? this.c7Config.balance : new BN(0)).add(message.value).toString(10)},   // smc_balance
+            {type: 'int', value: smcBalance.toString(10)},      // smc_balance
             {type: 'int', value: message.value.toString(10)},   // msg_value
             {type: 'cell', value: await cellToBoc(msgCell)},          // msg cell
             {type: 'cell_slice', value: await cellToBoc(bodyCell)},   // body slice
-        ], { mutateCode: true, mutateData: true })
+        ], {mutateCode: true, mutateData: true})
     }
 
     async sendExternalMessage(message: ExternalMessage): Promise<ExecutionResult> {
@@ -195,12 +198,14 @@ export class SmartContract {
         let bodyCell = new Cell()
         message.body.body.writeTo(bodyCell)
 
+        let smcBalance = (this.c7Config.balance ?? new BN(0))
+
         return await this.runContract('recv_external', [
-            {type: 'int', value: '1000'},                           // smc_balance
+            {type: 'int', value: smcBalance.toString(10)},    // smc_balance
             {type: 'int', value: '0'},                              // msg_value
             {type: 'cell', value: await cellToBoc(msgCell)},        // msg cell
             {type: 'cell_slice', value: await cellToBoc(bodyCell)}, // body slice
-        ], { mutateCode: true, mutateData: true })
+        ], {mutateCode: true, mutateData: true})
     }
 
     setUnixTime(time: number) {
