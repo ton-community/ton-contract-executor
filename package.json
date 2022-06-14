@@ -1,6 +1,6 @@
 {
   "name": "ton-contract-executor",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "TON Contracts local executor",
   "main": "dist/index.js",
   "repository": "http://github.com/Naltox/ton-contract-executor/",
