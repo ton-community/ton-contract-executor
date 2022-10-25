@@ -265,7 +265,8 @@ export class SmartContract {
         }
         let tmpFiles = codes.map((code, index) => {
             const sourceFile = tmp.fileSync({
-                name: `source-${index}.fc`
+                prefix: `source-${index}`,
+                postfix: ".fc"
             })
             fs.writeFileSync(sourceFile.fd, code)
             return sourceFile
