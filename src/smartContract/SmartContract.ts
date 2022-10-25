@@ -8,7 +8,10 @@ import {
     TVMStackEntry,
     TVMStackEntryTuple
 } from "../executor/executor";
-import {compileFunc} from "ton-compiler";
+import {compileContract} from "ton-compiler";
+import tmp from "tmp";
+import fs from "fs";
+import path from "path";
 import BN from "bn.js";
 import {bocToCell, cellToBoc} from "../utils/cell";
 import {TvmRunner, TvmRunnerAsynchronous} from "../executor/TvmRunner";
@@ -242,9 +245,50 @@ export class SmartContract {
         this.codeCellBoc = cellToBoc(codeCell)
     }
 
-    static async fromFuncSource(source: string, dataCell: Cell, config?: Partial<SmartContractConfig>) {
-        let compiledSource = await compileFunc(source)
-        return new SmartContract(Cell.fromBoc(compiledSource.cell)[0], dataCell, config)
+    protected static async compileFuncFiles(files: string[], stdlib: boolean = true): Promise<Cell> {
+        if (files.length == 0){
+            throw new Error("No sources to compile")
+        }
+        let workdir = path.dirname(files[0])
+        let result = await compileContract({ files: files, stdlib: true, version: 'latest', workdir: workdir })
+        if (result.ok) {
+            let c = Cell.fromBoc(result.output)[0]
+            return c
+        }else {
+            throw new Error("Error compiling the code: " + result.log)
+        }
+    }
+
+    protected static async compileFunc(codes: string[], stdlib: boolean = true) : Promise<Cell> {
+        if (codes.length == 0){
+            throw new Error("No sources to compile")
+        }
+        let tmpFiles = codes.map((code, index) => {
+            const sourceFile = tmp.fileSync({
+                name: `source-${index}.fc`
+            })
+            fs.writeFileSync(sourceFile.fd, code)
+            return sourceFile
+        })
+        let files = tmpFiles.map(f => f.name)
+        let resultCell = await SmartContract.compileFuncFiles(files, stdlib)
+        tmpFiles.forEach(f => f.removeCallback())
+        return resultCell;
+    }
+
+    static async fromFuncFiles(files: string[], dataCell: Cell, stdlib?: boolean, config?: Partial<SmartContractConfig>) {
+        let code_cell = await SmartContract.compileFuncFiles(files, stdlib)
+        return new SmartContract(code_cell, dataCell, config)
+    }
+
+    static async fromFuncSources(sources: string[], dataCell: Cell, stdlib?: boolean, config?: Partial<SmartContractConfig>) {
+        let code_cell = await SmartContract.compileFunc(sources, stdlib)
+        return new SmartContract(code_cell, dataCell, config)
+    }
+
+    static async fromFuncSource(source: string, dataCell: Cell, stdlib?: boolean, config?: Partial<SmartContractConfig>) {
+        let code_cell = await SmartContract.compileFunc([source], stdlib)
+        return new SmartContract(code_cell, dataCell, config)
     }
 
     static async fromCell(codeCell: Cell, dataCell: Cell, config?: Partial<SmartContractConfig>) {

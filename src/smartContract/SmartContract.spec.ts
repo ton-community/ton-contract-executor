@@ -111,7 +111,7 @@ describe('SmartContract', () => {
         let dataCell = new Cell()
         dataCell.bits.writeUint(0, 32)
 
-        let contract = await SmartContract.fromFuncSource(source, dataCell, {getMethodsMutate: true})
+        let contract = await SmartContract.fromFuncSource(source, dataCell, true, {getMethodsMutate: true})
 
         let res = await contract.invokeGetMethod('test', [])
         expect(res.result[0]).toEqual(new BN(0))
@@ -296,5 +296,27 @@ describe('SmartContract', () => {
         let contract = await SmartContract.fromFuncSource(source, new Cell())
         let res = await contract.invokeGetMethod('test', [])
         expect(res.exit_code).toEqual(777)
+    })
+    
+    it('should run multiple sources', async () => {
+        const source1 = `
+            int double_the_num(int n) {
+                return n * 2;
+            }
+        `;
+        const source2 = `
+            () main() {
+                ;; noop
+            }
+
+            int test() method_id {
+                return double_the_num(777);
+            }
+        `
+        let contract = await SmartContract.fromFuncSources([source1, source2], new Cell())
+        let res = await contract.invokeGetMethod('test', [])
+
+        expect(res.result[0]).toBeInstanceOf(BN)
+        expect(res.result[0]).toEqual(new BN(777 * 2))
     })
 })
