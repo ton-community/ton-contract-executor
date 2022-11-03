@@ -1,7 +1,6 @@
-import {Address, Cell, Slice} from "ton";
+import {Address, Cell} from "ton";
 import {crc16} from "../utils/crc16";
 import {vm_exec} from '../vm-exec/vmExec'
-import {randomBytes} from "crypto";
 import BN from "bn.js";
 import {TvmRunner} from "./TvmRunner";
 import {cellToBoc} from "../utils/cell";
@@ -67,6 +66,14 @@ export type C7Config = {
     blockLt?: number
     transLt?: number
     globalConfig?: Cell
+}
+
+const randomBytes = (n: number): Buffer => {
+    const b = Buffer.alloc(n)
+    for (let i = 0; i < n; i++) {
+        b[i] = Math.floor(Math.random() * 256)
+    }
+    return b
 }
 
 export function buildC7(config: C7Config) {

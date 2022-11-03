@@ -1,5 +1,5 @@
-import {Cell, RawCurrencyCollection, RawMessage, Slice} from "ton";
-import {readCurrencyCollection, readMessage} from "./messageUtils";
+import {Cell, parseCurrencyCollection, parseMessageRelaxed, RawCurrencyCollection, Slice} from "ton";
+import { RawMessageRelaxed } from "ton/dist/block/parse";
 
 // out_list_empty$_ = OutList 0;
 // out_list$_ {n:#} prev:^(OutList n) action:OutAction
@@ -20,7 +20,7 @@ import {readCurrencyCollection, readMessage} from "./messageUtils";
 //
 // out_list_node$_ prev:^Cell action:OutAction = OutListNode;
 
-export type SendMsgAction = { type: 'send_msg', message: RawMessage, mode: number }
+export type SendMsgAction = { type: 'send_msg', message: RawMessageRelaxed, mode: number }
 export type ReserveCurrencyAction = { type: 'reserve_currency', mode: number, currency: RawCurrencyCollection }
 export type SetCodeAction = { type: 'set_code', newCode: Cell }
 export type UnknownOutAction = { type: 'unknown' }
@@ -56,13 +56,13 @@ function parseActionsListImpl(actions: Slice|Cell): OutAction[] {
         outAction = {
             type: 'send_msg',
             mode: slice.readUint(8).toNumber(),
-            message: readMessage(slice.readRef())
+            message: parseMessageRelaxed(slice.readRef())
         }
     } else if (magic === 0x36e6b809) {
         outAction = {
             type: 'reserve_currency',
             mode: slice.readUint(8).toNumber(),
-            currency: readCurrencyCollection(slice)
+            currency: parseCurrencyCollection(slice)
         }
     } else if (magic === 0xad4de08e) {
         outAction = {

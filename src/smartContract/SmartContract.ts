@@ -3,15 +3,13 @@ import {
     buildC7,
     C7Config,
     getSelectorForMethod,
-    runTVM,
     TVMStack,
     TVMStackEntry,
     TVMStackEntryTuple
 } from "../executor/executor";
-import {compileFunc} from "ton-compiler";
 import BN from "bn.js";
 import {bocToCell, cellToBoc} from "../utils/cell";
-import {TvmRunner, TvmRunnerAsynchronous} from "../executor/TvmRunner";
+import {TvmRunner, TvmRunnerSynchronous} from "../executor/TvmRunner";
 import {OutAction, parseActionsList, SetCodeAction} from "../utils/parseActionList";
 
 type NormalizedStackEntry =
@@ -44,7 +42,7 @@ async function normalizeTvmStack(stack: TVMStack) {
     return await Promise.all(stack.map(v => normalizeTvmStackEntry(v)))
 }
 
-type SmartContractConfig = {
+export type SmartContractConfig = {
     // Whether or not get methods should update smc data, false by default (useful for debug)
     getMethodsMutate: boolean
     // Return debug logs
@@ -100,7 +98,7 @@ export class SmartContract {
         this.config = {
             getMethodsMutate: config?.getMethodsMutate ?? false,
             debug: config?.debug ?? false,
-            runner: TvmRunnerAsynchronous.getShared()
+            runner: new TvmRunnerSynchronous()
         }
     }
 
@@ -242,9 +240,11 @@ export class SmartContract {
         this.codeCellBoc = cellToBoc(codeCell)
     }
 
-    static async fromFuncSource(source: string, dataCell: Cell, config?: Partial<SmartContractConfig>) {
-        let compiledSource = await compileFunc(source)
-        return new SmartContract(Cell.fromBoc(compiledSource.cell)[0], dataCell, config)
+    /**
+     * @deprecated Use SmartContract.fromCell instead. Compilation of FunC is possible through https://github.com/ton-community/func-js and https://github.com/ton-community/ton-compiler
+     */
+    static async fromFuncSource(source: string, dataCell: Cell, config?: Partial<SmartContractConfig>): Promise<SmartContract> {
+        throw new Error('SmartContract.fromFuncSource is no longer supported. Use SmartContract.fromCell instead. Compilation of FunC is possible through https://github.com/ton-community/func-js and https://github.com/ton-community/ton-compiler')
     }
 
     static async fromCell(codeCell: Cell, dataCell: Cell, config?: Partial<SmartContractConfig>) {
