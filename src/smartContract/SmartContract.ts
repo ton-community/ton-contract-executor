@@ -9,7 +9,8 @@ import {
 } from "../executor/executor";
 import BN from "bn.js";
 import {bocToCell, cellToBoc} from "../utils/cell";
-import {TvmRunner, TvmRunnerSynchronous} from "../executor/TvmRunner";
+import {TvmRunner} from "../executor/TvmRunner";
+import {getInstance} from "../executor/asynchronousInstance";
 import {OutAction, parseActionsList, SetCodeAction} from "../utils/parseActionList";
 
 type NormalizedStackEntry =
@@ -98,7 +99,7 @@ export class SmartContract {
         this.config = {
             getMethodsMutate: config?.getMethodsMutate ?? false,
             debug: config?.debug ?? false,
-            runner: new TvmRunnerSynchronous()
+            runner: getInstance(),
         }
     }
 

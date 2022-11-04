@@ -26,6 +26,8 @@ const smcFromSource = async (source: string, data: Cell, config?: Partial<SmartC
 };
 
 describe('SmartContract', () => {
+    jest.setTimeout(15000)
+
     it('should run basic contract', async () => {
         const source = `
             () main() {
