@@ -1,6 +1,8 @@
 import {TVMExecuteConfig} from "../executor/executor";
+import {base64Decode} from "../utils/base64";
 
 const VmExec: any = require('../vm-exec/vm-exec')
+const {VmExecWasm}: {VmExecWasm: string} = require('../vm-exec/vm-exec-wasm')
 
 let instance: any = null
 let isInitializing = false
@@ -16,9 +18,11 @@ async function getInstance() {
     }
 
     isInitializing = true
-    instance = await VmExec()
+    instance = await VmExec({
+        wasmBinary: base64Decode(VmExecWasm),
+    })
     // Notify all waiters
-    waiters.map(w => w(instance))
+    waiters.forEach(w => w(instance))
     waiters = []
     return instance
 }

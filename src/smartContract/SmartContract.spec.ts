@@ -1,14 +1,32 @@
-import {SmartContract} from "./SmartContract";
+import {SmartContract, SmartContractConfig} from "./SmartContract";
 import {Address, Cell, CellMessage, CommonMessageInfo, ExternalMessage, InternalMessage, Slice, toNano} from "ton";
-import {
-    TVMStackEntryTuple
-} from "../executor/executor";
+import {TVMStackEntryTuple} from "../executor/executor";
 import BN from "bn.js";
 import {cellToBoc} from "../utils/cell";
 import {SendMsgAction} from "../utils/parseActionList";
-import { TvmRunnerAsynchronous } from "../executor/TvmRunner";
+import {TvmRunnerAsynchronous} from "../executor/TvmRunnerAsynchronous";
+import {compileFunc} from "@ton-community/func-js";
+import {stdlib} from "./stdlib.fc";
+
+const smcFromSource = async (source: string, data: Cell, config?: Partial<SmartContractConfig>) => {
+    const cr = await compileFunc({
+        sources: {
+            'main.fc': '#include "stdlib.fc";\n' + source,
+            'stdlib.fc': stdlib,
+        },
+        entryPoints: ['main.fc'],
+    });
+
+    if (cr.status === 'error') {
+        throw new Error('compilation failed: ' + cr.message);
+    }
+
+    return await SmartContract.fromCell(Cell.fromBoc(Buffer.from(cr.codeBoc, 'base64'))[0], data, config);
+};
 
 describe('SmartContract', () => {
+    jest.setTimeout(15000)
+
     it('should run basic contract', async () => {
         const source = `
             () main() {
@@ -19,7 +37,7 @@ describe('SmartContract', () => {
                 return 777;
             }
         `
-        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let contract = await smcFromSource(source, new Cell())
         let res = await contract.invokeGetMethod('test', [])
 
         expect(res.result[0]).toBeInstanceOf(BN)
@@ -36,7 +54,7 @@ describe('SmartContract', () => {
                 return in_cell;
             }
         `
-        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let contract = await smcFromSource(source, new Cell())
         let cell = new Cell()
         cell.bits.writeUint(0xFFFFFFFF, 32)
 
@@ -56,7 +74,7 @@ describe('SmartContract', () => {
                 return in_int;
             }
         `
-        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let contract = await smcFromSource(source, new Cell())
 
         let res = await contract.invokeGetMethod('test', [{type: 'int', value: '123'}])
 
@@ -74,7 +92,7 @@ describe('SmartContract', () => {
                 return in_tuple;
             }
         `
-        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let contract = await smcFromSource(source, new Cell())
 
         let tuple: TVMStackEntryTuple = {
             type: 'tuple',
@@ -112,7 +130,7 @@ describe('SmartContract', () => {
         let dataCell = new Cell()
         dataCell.bits.writeUint(0, 32)
 
-        let contract = await SmartContract.fromFuncSource(source, dataCell, {getMethodsMutate: true})
+        let contract = await smcFromSource(source, dataCell, {getMethodsMutate: true})
 
         let res = await contract.invokeGetMethod('test', [])
         expect(res.result[0]).toEqual(new BN(0))
@@ -135,7 +153,7 @@ describe('SmartContract', () => {
             }
         `
         let now = Math.floor(Date.now() / 1000)
-        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let contract = await smcFromSource(source, new Cell())
         contract.setUnixTime(now)
         let res = await contract.invokeGetMethod('get_time', [])
 
@@ -154,7 +172,7 @@ describe('SmartContract', () => {
                 return res;
             }
         `
-        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let contract = await smcFromSource(source, new Cell())
         contract.setBalance(new BN(777))
         let res = await contract.invokeGetMethod('my_balance', [])
 
@@ -170,7 +188,7 @@ describe('SmartContract', () => {
             }
         `
 
-        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let contract = await smcFromSource(source, new Cell())
         contract.setBalance(new BN(500));
         let bodyCell = new Cell()
         bodyCell.bits.writeUint(777, 256)
@@ -205,7 +223,7 @@ describe('SmartContract', () => {
             }
         `
 
-        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let contract = await smcFromSource(source, new Cell())
         let bodyCell = new Cell()
         bodyCell.bits.writeUint(777, 256)
 
@@ -247,9 +265,10 @@ describe('SmartContract', () => {
             }
         `
 
-        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let contract = await smcFromSource(source, new Cell())
 
         let res = await contract.sendInternalMessage(new InternalMessage({
+            from: new Address(0, Buffer.alloc(32)),
             to: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
             value: toNano(1),
             bounce: false,
@@ -270,7 +289,7 @@ describe('SmartContract', () => {
                 return ();
             }
         `
-        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let contract = await smcFromSource(source, new Cell())
         let res = await contract.sendInternalMessage(new InternalMessage({
             to: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
             value: toNano(1),
@@ -294,13 +313,13 @@ describe('SmartContract', () => {
                 return 777;
             }
         `
-        let contract = await SmartContract.fromFuncSource(source, new Cell())
+        let contract = await smcFromSource(source, new Cell())
         let res = await contract.invokeGetMethod('test', [])
         expect(res.exit_code).toEqual(777)
     })
 
     afterAll(async () => {
-      // close all opened threads
-      await TvmRunnerAsynchronous.getShared().cleanup()
+        // close all opened threads
+        await TvmRunnerAsynchronous.getShared().cleanup()
     })
 })

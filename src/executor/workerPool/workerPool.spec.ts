@@ -1,3 +1,4 @@
+import {createWorker} from "../node/createWorker";
 import {ExecutorPool} from "./executorPool";
 
 let config = {
@@ -27,8 +28,10 @@ let config = {
 }
 
 describe('ExecutorPool', () => {
+    jest.setTimeout(15000)
+
     it('should execute', async () => {
-        let pool = new ExecutorPool(2)
+        let pool = new ExecutorPool(2, createWorker)
 
         let pr: Promise<any>[] = []
 
