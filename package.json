@@ -11,7 +11,7 @@
     "bin/**/*"
   ],
   "browser": {
-    "./dist/executor/asynchronousInstance.js": "./dist/executor/synchronousInstance.js"
+    "./dist/executor/node/createWorker.js": "./dist/executor/web/createWorker.js"
   },
   "devDependencies": {
     "@babel/core": "^7.16.0",

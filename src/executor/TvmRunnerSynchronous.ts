@@ -6,5 +6,3 @@ export class TvmRunnerSynchronous implements TvmRunner {
         return await runTVM(config)
     }
 }
-
-export const getInstance = () => new TvmRunnerSynchronous()

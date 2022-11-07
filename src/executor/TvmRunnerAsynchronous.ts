@@ -1,14 +1,14 @@
 import { TVMExecuteConfig, TVMExecutionResult } from "./executor"
 import { TvmRunner } from "./TvmRunner"
 import { ExecutorPool } from "./workerPool/executorPool"
-import * as os from "os"
+import { createWorker, maxWorkers } from "./node/createWorker"
 
 export class TvmRunnerAsynchronous implements TvmRunner  {
     private pool: ExecutorPool
     private static shared: TvmRunnerAsynchronous|null = null
 
     constructor(workersCount: number) {
-        this.pool = new ExecutorPool(workersCount)
+        this.pool = new ExecutorPool(workersCount, createWorker)
     }
 
     async invoke(config: TVMExecuteConfig): Promise<TVMExecutionResult> {
@@ -17,11 +17,8 @@ export class TvmRunnerAsynchronous implements TvmRunner  {
 
     static getShared(): TvmRunnerAsynchronous {
         if (!TvmRunnerAsynchronous.shared) {
-            let workersCount = Math.max(2, os.cpus().length / 2)
-            TvmRunnerAsynchronous.shared = new TvmRunnerAsynchronous(workersCount)
+            TvmRunnerAsynchronous.shared = new TvmRunnerAsynchronous(maxWorkers())
         }
         return TvmRunnerAsynchronous.shared
     }
 }
-
-export const getInstance = () => TvmRunnerAsynchronous.getShared()

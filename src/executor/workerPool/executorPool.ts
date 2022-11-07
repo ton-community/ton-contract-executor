@@ -1,36 +1,33 @@
-import {Worker} from "worker_threads";
 import {TVMExecuteConfig, TVMExecutionResult} from "../executor";
 
-type WorkerResponseMessage = {
+export type WorkerResponseMessage = {
     id: number
     result: TVMExecutionResult
 }
 
-const getWorker = () => {
-    if (__filename.endsWith('.ts')) {
-        return new Worker(__dirname + '/worker.js', {
-            workerData: {
-                path: './executorWorker.ts'
-            }
-        })
-    } else {
-        return new Worker(__dirname + '/executorWorker.js')
-    }
+export type WorkerRequestMessage = {
+    id: number
+    config: TVMExecuteConfig
+}
+
+export interface ExecutorWorker {
+    onMessage(handler: (msg: WorkerResponseMessage) => void): void;
+    postMessage(msg: WorkerRequestMessage): void;
 }
 
 export class ExecutorPool {
     private reqNo = 0
-    private workers: Worker[] = []
+    private workers: ExecutorWorker[] = []
     private tasks = new Map<number, (result: any) => void>()
 
-    constructor(size: number) {
-        this.setupWorkers(size)
+    constructor(size: number, createWorker: () => ExecutorWorker) {
+        this.setupWorkers(size, createWorker)
     }
 
-    private setupWorkers(size: number) {
+    private setupWorkers(size: number, createWorker: () => ExecutorWorker) {
         for (let i = 0; i < size; i++) {
-            let worker = getWorker()
-            worker.on('message', msg => this.onWorkerMessage(msg))
+            const worker = createWorker()
+            worker.onMessage(msg => this.onWorkerMessage(msg))
             this.workers.push(worker)
         }
     }
