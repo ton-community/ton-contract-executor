@@ -34,6 +34,7 @@
   },
   "scripts": {
     "copy:wasm": "cp ./src/vm-exec/vm-exec.js ./dist/vm-exec/vm-exec.js && cp ./src/vm-exec/vm-exec-wasm.js ./dist/vm-exec/vm-exec-wasm.js",
-    "release": "rm -fr dist && tsc && yarn copy:wasm && jest && yarn publish"
+    "build": "rm -fr dist && yarn tsc && yarn copy:wasm && yarn jest",
+    "release": "yarn build && yarn publish"
   }
 }

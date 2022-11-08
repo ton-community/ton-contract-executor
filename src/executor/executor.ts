@@ -12,6 +12,9 @@ export type TVMExecuteConfig = {
     code: string,               // base64 encoded TVM fift assembly
     data: string,               // base64 encoded boc(data_cell)
     c7_register: TVMStackEntryTuple
+    gas_limit: number
+    gas_max: number
+    gas_credit: number
 }
 
 export type TVMStack = TVMStackEntry[]
@@ -125,6 +128,12 @@ export async function runTVM(config: TVMExecuteConfig): Promise<TVMExecutionResu
     return await vm_exec(config)
 }
 
+export type GasLimits = {
+    limit?: number
+    max?: number
+    credit?: number
+}
+
 export type RunContractConfig = {
     code: Cell,
     dataCell: Cell,
@@ -133,6 +142,7 @@ export type RunContractConfig = {
     c7: TVMStackEntryTuple,
     debug: boolean
     executor?: TvmRunner
+    gasLimits?: GasLimits
 }
 
 export async function runContract(config: RunContractConfig): Promise<TVMExecutionResult> {
@@ -143,16 +153,20 @@ export async function runContract(config: RunContractConfig): Promise<TVMExecuti
         method,
         c7,
         debug,
-        executor
+        executor,
+        gasLimits,
     } = config
 
-    let executorConfig = {
+    let executorConfig: TVMExecuteConfig = {
         debug,
         function_selector: getSelectorForMethod(method),
         init_stack: stack,
         code: cellToBoc(code),
         data: cellToBoc(dataCell),
-        c7_register: c7
+        c7_register: c7,
+        gas_limit: gasLimits?.limit ?? -1,
+        gas_max: gasLimits?.max ?? -1,
+        gas_credit: gasLimits?.credit ?? -1,
     }
 
     let res

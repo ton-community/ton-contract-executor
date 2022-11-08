@@ -44,6 +44,27 @@ describe('SmartContract', () => {
         expect(res.result[0]).toEqual(new BN(777))
     })
 
+    it('should fail when out of gas', async () => {
+        const source = `
+            () main() {
+                ;; noop
+            }
+
+            int test() method_id {
+                return 777;
+            }
+        `
+        let contract = await smcFromSource(source, new Cell())
+        let res = await contract.invokeGetMethod('test', [], {
+            gasLimits: {
+                limit: 324,
+            }
+        })
+
+        expect(res.type).toBe('failed')
+        expect(res.exit_code).toBe(-14) // out of gas (-14 = ~(13), check C++ TVM code)
+    })
+
     it('handle cells', async () => {
         const source = `
             () main() {

@@ -2,7 +2,9 @@ import {Cell, ExternalMessage, InternalMessage, Slice} from "ton";
 import {
     buildC7,
     C7Config,
+    GasLimits,
     getSelectorForMethod,
+    TVMExecuteConfig,
     TVMStack,
     TVMStackEntry,
     TVMStackEntryTuple
@@ -103,14 +105,17 @@ export class SmartContract {
         }
     }
 
-    private async runContract(method: string, stack: TVMStack, opts: { mutateData: boolean, mutateCode: boolean }): Promise<ExecutionResult> {
-        let executorConfig = {
+    private async runContract(method: string, stack: TVMStack, opts: { mutateData: boolean, mutateCode: boolean, gasLimits?: GasLimits }): Promise<ExecutionResult> {
+        let executorConfig: TVMExecuteConfig = {
             debug: this.config.debug,
             function_selector: getSelectorForMethod(method),
             init_stack: stack,
             code: this.codeCellBoc,
             data: this.dataCellBoc,
-            c7_register: this.getC7()
+            c7_register: this.getC7(),
+            gas_limit: opts.gasLimits?.limit ?? -1,
+            gas_max: opts.gasLimits?.max ?? -1,
+            gas_credit: opts.gasLimits?.credit ?? -1,
         }
         let res = await this.config.runner.invoke(executorConfig)
 
@@ -157,14 +162,15 @@ export class SmartContract {
         }
     }
 
-    async invokeGetMethod(method: string, args: TVMStack): Promise<ExecutionResult> {
+    async invokeGetMethod(method: string, args: TVMStack, opts?: { gasLimits?: GasLimits }): Promise<ExecutionResult> {
         return await this.runContract(method, args, {
             mutateData: this.config.getMethodsMutate,
-            mutateCode: this.config.getMethodsMutate
+            mutateCode: this.config.getMethodsMutate,
+            gasLimits: opts?.gasLimits,
         })
     }
 
-    async sendInternalMessage(message: InternalMessage): Promise<ExecutionResult> {
+    async sendInternalMessage(message: InternalMessage, opts?: { gasLimits?: GasLimits }): Promise<ExecutionResult> {
         let msgCell = new Cell()
         message.writeTo(msgCell)
 
@@ -183,10 +189,10 @@ export class SmartContract {
             {type: 'int', value: message.value.toString(10)},   // msg_value
             {type: 'cell', value: await cellToBoc(msgCell)},          // msg cell
             {type: 'cell_slice', value: await cellToBoc(bodyCell)},   // body slice
-        ], {mutateCode: true, mutateData: true})
+        ], {mutateCode: true, mutateData: true, gasLimits: opts?.gasLimits})
     }
 
-    async sendExternalMessage(message: ExternalMessage): Promise<ExecutionResult> {
+    async sendExternalMessage(message: ExternalMessage, opts?: { gasLimits?: GasLimits }): Promise<ExecutionResult> {
         let msgCell = new Cell()
         message.writeTo(msgCell)
 
@@ -204,7 +210,7 @@ export class SmartContract {
             {type: 'int', value: '0'},                              // msg_value
             {type: 'cell', value: await cellToBoc(msgCell)},        // msg cell
             {type: 'cell_slice', value: await cellToBoc(bodyCell)}, // body slice
-        ], {mutateCode: true, mutateData: true})
+        ], {mutateCode: true, mutateData: true, gasLimits: opts?.gasLimits})
     }
 
     setUnixTime(time: number) {
