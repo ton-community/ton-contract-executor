@@ -53,11 +53,11 @@ export type TVMStackEntryInt = { type: 'int', value: string }
 export type TVMStackEntryCellSlice = { type: 'cell_slice', value: string }
 export type TVMStackEntryTuple = { type: 'tuple', value: TVMStackEntry[] }
 
-const makeIntEntry = (value: number|BN): TVMStackEntryInt => ({ type: 'int', value: value.toString(10) })
-const makeTuple = (items: TVMStackEntry[]): TVMStackEntryTuple => ({ type: 'tuple', value: items})
-const makeNull = (): TVMStackEntryNull => ({ type: 'null' })
-const makeCell = (cell: Cell): TVMStackEntryCell => ({ type: 'cell', value: cellToBoc(cell) })
-const makeSlice = (cell: Cell): TVMStackEntryCellSlice => ({ type: 'cell_slice', value: cellToBoc(cell) })
+export const stackInt = (value: number|BN): TVMStackEntryInt => ({ type: 'int', value: value.toString(10) })
+export const stackTuple = (items: TVMStackEntry[]): TVMStackEntryTuple => ({ type: 'tuple', value: items })
+export const stackNull = (): TVMStackEntryNull => ({ type: 'null' })
+export const stackCell = (cell: Cell): TVMStackEntryCell => ({ type: 'cell', value: cellToBoc(cell) })
+export const stackSlice = (cell: Cell): TVMStackEntryCellSlice => ({ type: 'cell_slice', value: cellToBoc(cell) })
 
 export type C7Config = {
     unixtime?: number,
@@ -106,20 +106,20 @@ export function buildC7(config: C7Config) {
     addressCell.bits.writeAddress(currentConfig.myself)
 
     // [Integer (Maybe Cell)]
-    let balance = makeTuple([makeIntEntry(currentConfig.balance), makeNull()])
+    let balance = stackTuple([stackInt(currentConfig.balance), stackNull()])
 
-    return makeTuple([
-        makeTuple([
-            makeIntEntry(0x076ef1ea),           // [ magic:0x076ef1ea
-            makeIntEntry(currentConfig.actions),      // actions:Integer
-            makeIntEntry(currentConfig.messagesSent), // msgs_sent:Integer
-            makeIntEntry(currentConfig.unixtime),     // unixtime:Integer
-            makeIntEntry(currentConfig.blockLt),      // block_lt:Integer
-            makeIntEntry(currentConfig.transLt),      // trans_lt:Integer
-            makeIntEntry(currentConfig.randSeed),     // rand_seed:Integer
+    return stackTuple([
+        stackTuple([
+            stackInt(0x076ef1ea),           // [ magic:0x076ef1ea
+            stackInt(currentConfig.actions),      // actions:Integer
+            stackInt(currentConfig.messagesSent), // msgs_sent:Integer
+            stackInt(currentConfig.unixtime),     // unixtime:Integer
+            stackInt(currentConfig.blockLt),      // block_lt:Integer
+            stackInt(currentConfig.transLt),      // trans_lt:Integer
+            stackInt(currentConfig.randSeed),     // rand_seed:Integer
             balance,                                  // balance_remaining:[Integer (Maybe Cell)]
-            makeSlice(addressCell),                   // myself:MsgAddressInt
-            makeCell(currentConfig.globalConfig),     // global_config:(Maybe Cell) ] = SmartContractInfo;
+            stackSlice(addressCell),                   // myself:MsgAddressInt
+            stackCell(currentConfig.globalConfig),     // global_config:(Maybe Cell) ] = SmartContractInfo;
         ])
     ])
 }
