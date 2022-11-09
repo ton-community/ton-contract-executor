@@ -339,6 +339,24 @@ describe('SmartContract', () => {
         expect(res.exit_code).toEqual(777)
     })
 
+    it('should handle exceptions handlers', async () => {
+        const source = `
+            forall X -> int is_int(X x) asm "<{ TRY:<{ 0 PUSHINT ADD DROP -1 PUSHINT }>CATCH<{ 2DROP 0 PUSHINT }> }>CONT 1 1 CALLXARGS";
+                  
+            () main() {
+                ;; noop
+            }
+            
+            int test() method_id {
+                var value = begin_cell().end_cell();
+                return is_int(value);
+            }
+        `
+        let contract = await smcFromSource(source, new Cell())
+        let res = await contract.invokeGetMethod('test', [])
+        expect(res.exit_code).toEqual(0)
+    })
+
     afterAll(async () => {
         // close all opened threads
         await TvmRunnerAsynchronous.getShared().cleanup()
