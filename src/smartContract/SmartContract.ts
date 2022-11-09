@@ -62,6 +62,7 @@ export type FailedExecutionResult = {
     actionList: OutAction[],
     action_list_cell?: Cell
     logs: string
+    debugLogs: string[]
 }
 
 export type SuccessfulExecutionResult = {
@@ -72,6 +73,7 @@ export type SuccessfulExecutionResult = {
     actionList: OutAction[],
     action_list_cell?: Cell
     logs: string
+    debugLogs: string[]
 }
 
 export type ExecutionResult = FailedExecutionResult | SuccessfulExecutionResult
@@ -136,6 +138,7 @@ export class SmartContract {
                 action_list_cell: undefined,
                 actionList: [],
                 logs: logs,
+                debugLogs: res.debugLogs,
             }
         }
 
@@ -158,7 +161,8 @@ export class SmartContract {
             result: await normalizeTvmStack(res.stack || []),
             action_list_cell: actionListCell,
             logs: decodeLogs(res.logs),
-            actionList
+            actionList,
+            debugLogs: res.debugLogs,
         }
     }
 

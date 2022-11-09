@@ -27,6 +27,7 @@ export type TVMExecutionResultOk = {
     data_cell: string           // base64 encoded BOC
     action_list_cell: string    // base64 encoded BOC
     logs: string
+    debugLogs: string[]
 }
 
 export type TVMExecutionResultFail = {
@@ -34,6 +35,7 @@ export type TVMExecutionResultFail = {
     error?: string
     exit_code?: number,
     logs?: string
+    debugLogs: string[]
 }
 
 export type TVMExecutionResult =
@@ -125,7 +127,11 @@ export function buildC7(config: C7Config) {
 }
 
 export async function runTVM(config: TVMExecuteConfig): Promise<TVMExecutionResult> {
-    return await vm_exec(config)
+    const res = await vm_exec(config)
+    return {
+        ...res.result,
+        debugLogs: res.debugLogs,
+    }
 }
 
 export type GasLimits = {

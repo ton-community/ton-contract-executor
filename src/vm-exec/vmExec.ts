@@ -7,6 +7,7 @@ const {VmExecWasm}: {VmExecWasm: string} = require('../vm-exec/vm-exec-wasm')
 let instance: any = null
 let isInitializing = false
 let waiters: ((instance: any) => unknown)[] = []
+let logs: string[] = []
 
 async function getInstance() {
     if (instance) {
@@ -20,6 +21,7 @@ async function getInstance() {
     isInitializing = true
     instance = await VmExec({
         wasmBinary: base64Decode(VmExecWasm),
+        printErr: (text: string) => logs.push(text),
     })
     // Notify all waiters
     waiters.forEach(w => w(instance))
@@ -35,5 +37,10 @@ export async function vm_exec(config: TVMExecuteConfig) {
     let out = vmInstance.UTF8ToString(res)
     vmInstance._free(ref)
     vmInstance._free(res)
-    return JSON.parse(out)
+    const capturedLogs = logs
+    logs = []
+    return {
+        result: JSON.parse(out),
+        debugLogs: capturedLogs,
+    }
 }
