@@ -7,18 +7,15 @@ That allows you to write & debug & fully test your contracts before launching th
 
 TON Contract executor allows you to: 
 
-- execute smart contracts from FunC source code
-- execute smart contracts from existing data & code Cells
-- get TVM executing logs
+- execute smart contracts from existing code and data Cells
+- get TVM execution logs
 - debug your contracts via debug primitives
-- it handles internal state changes of contract data
-- allows calling of so-called GET methods of smart contracts
-- allows sending & debugging internal messages
-- allows sending & debugging external messages
-- allows debugging of messages sent by smart contract
-- handle changes in smart contract code
-- allows manipulations with C7 register of smart contract (including time, random seed, network config, etc.)
-- allows you to make some gas optimizations
+- seamlessly handle internal state changes of contract data and code
+- call so-called get methods of smart contracts
+- send and debug internal and external messages
+- debug messages sent by smart contract
+- manipulate the C7 register of the smart contract (including time, random seed, network config, etc.)
+- make some gas optimizations
 
 **Basically you can develop, debug, and fully cover your contract with unit-tests fully locally without deploying it to the network**
 
@@ -29,18 +26,19 @@ yarn add ton-contract-executor
 ```
 
 ## How it works 
-This package internally uses original TVM which runs on actual validator nodes to execute smart contract.
-TVM build to WASM so this library could be used on any platform.
-We also added some layer of abstraction on top of original TVM to allow it to run contracts via some JSON configurations (those changes could be found [here](https://github.com/Naltox/ton/tree/master/crypto/vm-exec))
+This package internally uses original TVM which runs on actual validator nodes to execute smart contracts.
+TVM is built to WASM so this library could be used on any platform.
+We also added some layer of abstraction on top of original TVM to allow it to run contracts via JSON configuration (those changes could be found [here](https://github.com/ton-community/ton-blockchain/tree/vm-exec/crypto/vm-exec))
 
 ## Usage
 
-Usage is pretty straightforward: firstly you should create instance of SmartContract.
+Usage is pretty straightforward: first of all, you should create an instance of SmartContract.
 You could think of SmartContract as an existing deployed smart contract with which you can communicate.
 
 
-Creating SmartContract from FunC source code:
+Creating SmartContract from FunC source code (here the `@ton-community/func-js` package is used for compilation):
 ```typescript
+import { compileFunc } from "@ton-community/func-js";
 import { SmartContract } from "ton-contract-executor";
 import { Cell } from "ton";
 
@@ -55,17 +53,26 @@ async function main() {
     }
 `
 
-    let contract = await SmartContract.fromFuncSource(
-        source,     // String with FunC source code of contract 
-        new Cell()  // Data Cell (empty Cell in this case)
+    const compileResult = await compileFunc({
+        sources: {
+            'contract.fc': source,
+        },
+        entryPoints: ['contract.fc'],
+    })
+
+    if (compileResult.status === 'error') throw new Error('compilation failed')
+
+    const contract = await SmartContract.fromCell(
+        Cell.fromBoc(Buffer.from(compileResult.codeBoc, 'base64'))[0],
+        new Cell(),
     )
 }
 ```
 
-In some cases it's useful to create SmartContract from existing precompiled code Cell & data cell.
+In some cases it's useful to create SmartContract from existing precompiled code Cell & data Cell.
 For example if you need to debug some existing contract from network.
 
-Here is an example of creating local copy of existing wallet smart contract from the network deployed at ``EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t`` address and getting it's seq:
+Here is an example of creating a local copy of existing wallet smart contract from the network deployed at ``EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t`` address and getting its seq:
 
 ```typescript
 import {Address, Cell, TonClient} from "ton";
@@ -93,14 +100,14 @@ async function main() {
 
 ## Interacting with contract
 
-Once you have created instance of SmartContract you can start to interact with it.
+Once you have created instance of SmartContract you can start interacting with it.
 
 ### Invoking get methods
 
 You can invoke any get method on contract using ```invokeGetMethod``` function:
 
 ```typescript
-import { SmartContract } from "ton-contract-executor";
+import { SmartContract, stackInt } from "ton-contract-executor";
 import { Cell } from "ton";
 
 async function main() {
@@ -114,18 +121,32 @@ async function main() {
     }
 `
 
-    let contract = await SmartContract.fromFuncSource(source, new Cell())
+    const compileResult = await compileFunc({
+        sources: {
+            'contract.fc': source,
+        },
+        entryPoints: ['contract.fc'],
+    })
+
+    if (compileResult.status === 'error') throw new Error('compilation failed')
+
+    const contract = await SmartContract.fromCell(
+        Cell.fromBoc(Buffer.from(compileResult.codeBoc, 'base64'))[0],
+        new Cell(),
+    )
     
-    let res = await contract.invokeGetMethod('sum', [
+    const res = await contract.invokeGetMethod('sum', [
         // argument a
-        { type: 'int', value: '1' },
+        stackInt(1),
         // argument b
-        { type: 'int', value: '2' },
+        stackInt(2),
     ])
     
     console.log('1 + 2 = ', res.result[0])
 }
 ```
+
+You can create arguments of other types for get methods using exported functions `stackInt`, `stackCell`, `stackSlice`, `stackTuple` and `stackNull`.
 
 ### Sending messages to contract
 
@@ -133,14 +154,17 @@ You can send both external and internal messages to your contract via calling ``
 
 ```typescript
 import { SmartContract } from "ton-contract-executor";
-import { Cell, InternalMessage, CommonMessageInfo, CellMessage  } from "ton";
+import { Cell, InternalMessage, CommonMessageInfo, CellMessage } from "ton";
 
 async function main() {
-    let contract = await SmartContract.fromFuncSource(source, new Cell())
+    const contract = await SmartContract.fromCell(
+        Cell.fromBoc(Buffer.from(compileResult.codeBoc, 'base64'))[0],
+        new Cell(),
+    )
     
-    let msgBody = new Cell()
+    const msgBody = new Cell()
     
-    let res = await this.contract.sendInternalMessage(new InternalMessage({
+    const res = await this.contract.sendInternalMessage(new InternalMessage({
         to: contractAddress,
         from: from,
         value: 1, // 1 nanoton
@@ -152,6 +176,52 @@ async function main() {
 }
 ```
 
+### Setting gas limits
+
+`invokeGetMethod`, `sendInternalMessage`, `sendExternalMessage` all support last optional `opts?: { gasLimits?: GasLimits; }` argument for setting gas limits.
+As an example, the following code
+
+```typescript
+import { compileFunc } from "@ton-community/func-js";
+import { SmartContract, stackInt } from "ton-contract-executor";
+import { Cell } from "ton";
+
+async function main() {
+    const source = `
+    () main() {
+        ;; noop
+    }
+
+    int sum(int a, int b) method_id {
+        return a + b;
+    }
+`
+
+    const compileResult = await compileFunc({
+        sources: {
+            'contract.fc': source,
+        },
+        entryPoints: ['contract.fc'],
+    })
+
+    if (compileResult.status === 'error') throw new Error('compilation failed')
+
+    let contract = await SmartContract.fromCell(
+        Cell.fromBoc(Buffer.from(compileResult.codeBoc, 'base64'))[0],
+        new Cell(),
+    )
+
+    console.log(await contract.invokeGetMethod('sum', [
+        stackInt(1),
+        stackInt(2),
+    ], {
+        gasLimits: {
+            limit: 308,
+        },
+    }))
+}
+```
+will output a `failed` execution result to console, because such a call requires 309 gas.
 
 ### Execution result
 
@@ -190,23 +260,21 @@ What is what:
 - action_list_cell: raw cell with serialized action list 
 - logs: logs of TVM
 
-###
-
 ### Configuration of SmartContract
 
 You also can configure some parameters of your smart contract:
 
-Firstly both ```fromFuncSource``` and ```fromCell``` accept configuration object as third parameter:
+```fromCell``` accepts configuration object as third parameter:
 
 ```typescript
 type SmartContractConfig = {
-    getMethodsMutate: boolean;  // this allows you to use set_code in get methods (usefull for debug)
-    debug: boolean;             // enables or disables TVM logs (it's usefull to disable logs if you rely on performance)
+    getMethodsMutate: boolean;  // this allows you to use set_code in get methods (useful for debugging)
+    debug: boolean;             // enables or disables TVM logs (it's useful to disable logs if you rely on performance)
     runner: TvmRunner;
 };
 ```
 
-TvmRunner allows you to select TVM executor for specific contract, by default all contracts use ```TvmRunnerAsynchronous``` which runs thread pool of wasm TVM.
+TvmRunner allows you to select TVM executor for specific contract, by default all contracts use ```TvmRunnerAsynchronous``` which runs thread pool of WASM TVM (it uses worker_threads on node and web workers when bundled for web).
 
 ### Contract time
 
@@ -231,6 +299,48 @@ export declare type C7Config = {
 ```
 
 We prefill it by default, but you can change it by calling ```setC7Config``` or ```setC7```.
+
+### Termination of worker threads
+
+In order for your tests to terminate successfully, you need to terminate the spawned worker threads, which can be done as follows:
+
+```
+import {TvmRunnerAsynchronous} from "ton-contract-executor";
+
+await TvmRunnerAsynchronous.getShared().cleanup()
+```
+
+### Shipping to web
+
+`ton-contract-executor` can be bundled using webpack, but a polyfill for `Buffer` is required.
+
+This can be done by installing the `buffer` package and adding the following to your webpack configuration:
+
+```
+  resolve: {
+    fallback: {
+      "buffer": require.resolve("buffer/")
+    }
+  }
+```
+
+However, if you are using `@ton-community/func-js` for compilation, you also need polyfills for `crypto` and `stream` (`crypto-browserify` and `stream-browserify` respectively), and add the following to your webpack configuration:
+
+```
+  resolve: {
+    fallback: {
+      fs: false,
+      path: false,
+      "crypto": require.resolve("crypto-browserify"),
+      "stream": require.resolve("stream-browserify"),
+      "buffer": require.resolve("buffer/")
+    }
+  }
+```
+
+### Building the WASM part
+
+If you need to build the WASM part of this package, you can use [this repo](https://github.com/ton-community/ton-vm-exec-builder)
 
 # License
 
