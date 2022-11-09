@@ -304,7 +304,7 @@ We prefill it by default, but you can change it by calling ```setC7Config``` or 
 
 In order for your tests to terminate successfully, you need to terminate the spawned worker threads, which can be done as follows:
 
-```
+```typescript
 import {TvmRunnerAsynchronous} from "ton-contract-executor";
 
 await TvmRunnerAsynchronous.getShared().cleanup()
@@ -316,7 +316,7 @@ await TvmRunnerAsynchronous.getShared().cleanup()
 
 This can be done by installing the `buffer` package and adding the following to your webpack configuration:
 
-```
+```js
   resolve: {
     fallback: {
       "buffer": require.resolve("buffer/")
@@ -326,11 +326,11 @@ This can be done by installing the `buffer` package and adding the following to 
 
 However, if you are using `@ton-community/func-js` for compilation, you also need polyfills for `crypto` and `stream` (`crypto-browserify` and `stream-browserify` respectively), and add the following to your webpack configuration:
 
-```
+```js
   resolve: {
     fallback: {
-      fs: false,
-      path: false,
+      "fs": false,
+      "path": false,
       "crypto": require.resolve("crypto-browserify"),
       "stream": require.resolve("stream-browserify"),
       "buffer": require.resolve("buffer/")
