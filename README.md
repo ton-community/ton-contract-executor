@@ -1,6 +1,6 @@
-# TON Contract Executor
+# TON Contract Executor [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/ton-community/ton-contract-executor#license) [![npm version](https://img.shields.io/npm/v/ton-contract-executor.svg?style=flat)](https://www.npmjs.com/package/ton-contract-executor)
 
-This library allows you to run Ton Virtual Machine locally and execute contract.
+This library allows you to run TON Virtual Machine locally and execute contract.
 That allows you to write & debug & fully test your contracts before launching them to the network.
 
 ## Features
