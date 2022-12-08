@@ -107,10 +107,10 @@ export class SmartContract {
         }
     }
 
-    private async runContract(method: string, stack: TVMStack, opts: { mutateData: boolean, mutateCode: boolean, gasLimits?: GasLimits }): Promise<ExecutionResult> {
+    private async runContract(method: string | number, stack: TVMStack, opts: { mutateData: boolean, mutateCode: boolean, gasLimits?: GasLimits }): Promise<ExecutionResult> {
         let executorConfig: TVMExecuteConfig = {
             debug: this.config.debug,
-            function_selector: getSelectorForMethod(method),
+            function_selector: typeof method === 'string' ? getSelectorForMethod(method) : method,
             init_stack: stack,
             code: this.codeCellBoc,
             data: this.dataCellBoc,
@@ -166,7 +166,7 @@ export class SmartContract {
         }
     }
 
-    async invokeGetMethod(method: string, args: TVMStack, opts?: { gasLimits?: GasLimits }): Promise<ExecutionResult> {
+    async invokeGetMethod(method: string | number, args: TVMStack, opts?: { gasLimits?: GasLimits }): Promise<ExecutionResult> {
         return await this.runContract(method, args, {
             mutateData: this.config.getMethodsMutate,
             mutateCode: this.config.getMethodsMutate,
