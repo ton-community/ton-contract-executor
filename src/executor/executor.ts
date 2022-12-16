@@ -28,6 +28,7 @@ export type TVMExecutionResultOk = {
     action_list_cell: string    // base64 encoded BOC
     logs: string
     debugLogs: string[]
+    c7: TVMStackEntryTuple
 }
 
 export type TVMExecutionResultFail = {
@@ -36,6 +37,7 @@ export type TVMExecutionResultFail = {
     exit_code?: number,
     logs?: string
     debugLogs: string[]
+    c7: TVMStackEntryTuple
 }
 
 export type TVMExecutionResult =

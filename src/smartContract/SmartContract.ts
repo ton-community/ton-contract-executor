@@ -59,21 +59,23 @@ export type FailedExecutionResult = {
     exit_code: number
     gas_consumed: number,
     result: NormalizedStackEntry[]
-    actionList: OutAction[],
+    actionList: OutAction[]
     action_list_cell?: Cell
     logs: string
     debugLogs: string[]
+    c7: NormalizedStackEntry[]
 }
 
 export type SuccessfulExecutionResult = {
     type: 'success',
     exit_code: number,
     gas_consumed: number,
-    result: NormalizedStackEntry[],
-    actionList: OutAction[],
+    result: NormalizedStackEntry[]
+    actionList: OutAction[]
     action_list_cell?: Cell
     logs: string
     debugLogs: string[]
+    c7: NormalizedStackEntry[]
 }
 
 export type ExecutionResult = FailedExecutionResult | SuccessfulExecutionResult
@@ -139,6 +141,7 @@ export class SmartContract {
                 actionList: [],
                 logs: logs,
                 debugLogs: res.debugLogs,
+                c7: await normalizeTvmStack(res.c7.value),
             }
         }
 
@@ -163,6 +166,7 @@ export class SmartContract {
             logs: decodeLogs(res.logs),
             actionList,
             debugLogs: res.debugLogs,
+            c7: await normalizeTvmStack(res.c7.value),
         }
     }
 
