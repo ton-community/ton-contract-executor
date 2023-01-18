@@ -107,7 +107,7 @@ export function buildC7(config: C7Config) {
     //    workchain_id:int8 address:bits256  = MsgAddressInt;
     // workchain_id:int8 address:bits256  = MsgAddressInt;
     let addressCell = new Cell()
-    addressCell.bits.writeAddress(currentConfig.myself)
+    addressCell.asBuilder().storeAddress(currentConfig.myself)
 
     // [Integer (Maybe Cell)]
     let balance = stackTuple([stackInt(currentConfig.balance), stackNull()])

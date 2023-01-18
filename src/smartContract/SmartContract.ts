@@ -1,4 +1,4 @@
-import {Cell, ExternalMessage, InternalMessage, Slice} from "ton";
+import {Cell, CommonMessageInfoRelaxedInternal, Message, MessageRelaxed, Slice, storeMessage, storeMessageRelaxed} from "ton";
 import {
     buildC7,
     C7Config,
@@ -33,7 +33,7 @@ async function normalizeTvmStackEntry(entry: TVMStackEntry): Promise<NormalizedS
         return new BN(entry.value, 10)
     }
     if (entry.type === 'cell_slice') {
-        return Slice.fromCell(bocToCell(entry.value))
+        return bocToCell(entry.value).asSlice()
     }
     if (entry.type === 'tuple') {
         return await Promise.all(entry.value.map(v => normalizeTvmStackEntry(v)))
@@ -178,46 +178,52 @@ export class SmartContract {
         })
     }
 
-    async sendInternalMessage(message: InternalMessage, opts?: { gasLimits?: GasLimits }): Promise<ExecutionResult> {
-        let msgCell = new Cell()
-        message.writeTo(msgCell)
+    async sendInternalMessage(message: MessageRelaxed, opts?: { gasLimits?: GasLimits }): Promise<ExecutionResult> {
+        // let msgCell = new Cell()
+        // message.writeTo(msgCell)
 
-        if (!message.body.body) {
+        
+
+        if (!message.body) {
             throw new Error('No body was provided for message')
         }
 
-        let bodyCell = new Cell()
-        message.body.body.writeTo(bodyCell)
+        // let bodyCell = new Cell()
+        // message.body.writeTo(bodyCell)
 
+        let messageCell = new Cell().asBuilder();
+        storeMessageRelaxed(message)(messageCell);
 
-        let smcBalance = (this.c7Config.balance ?? new BN(0)).add(message.value)
+        const value = (message.info as CommonMessageInfoRelaxedInternal).value.coins
+        let smcBalance = (this.c7Config.balance ?? new BN(0)).add(new BN(value.toString()))
 
         return await this.runContract('recv_internal', [
             {type: 'int', value: smcBalance.toString(10)},      // smc_balance
-            {type: 'int', value: message.value.toString(10)},   // msg_value
-            {type: 'cell', value: await cellToBoc(msgCell)},          // msg cell
-            {type: 'cell_slice', value: await cellToBoc(bodyCell)},   // body slice
+            {type: 'int', value: value.toString()},   // msg_value
+            {type: 'cell', value: cellToBoc(messageCell.asCell())},          // msg cell
+            {type: 'cell_slice', value: cellToBoc(message.body)},   // body slice
         ], {mutateCode: true, mutateData: true, gasLimits: opts?.gasLimits})
     }
 
-    async sendExternalMessage(message: ExternalMessage, opts?: { gasLimits?: GasLimits }): Promise<ExecutionResult> {
-        let msgCell = new Cell()
-        message.writeTo(msgCell)
+    async sendExternalMessage(message: Message, opts?: { gasLimits?: GasLimits }): Promise<ExecutionResult> {
+        // let msgCell = new Cell()
+        // message.writeTo(msgCell)
 
-        if (!message.body.body) {
+        if (!message.body) {
             throw new Error('No body was provided for message')
         }
 
-        let bodyCell = new Cell()
-        message.body.body.writeTo(bodyCell)
+        let messageCell = new Cell().asBuilder();
+        storeMessage(message)(messageCell);
+        // message.body.writeTo(bodyCell)
 
         let smcBalance = (this.c7Config.balance ?? new BN(0))
 
         return await this.runContract('recv_external', [
             {type: 'int', value: smcBalance.toString(10)},    // smc_balance
             {type: 'int', value: '0'},                              // msg_value
-            {type: 'cell', value: await cellToBoc(msgCell)},        // msg cell
-            {type: 'cell_slice', value: await cellToBoc(bodyCell)}, // body slice
+            {type: 'cell', value: cellToBoc(messageCell.asCell())},        // msg cell
+            {type: 'cell_slice', value: cellToBoc(message.body)}, // body slice
         ], {mutateCode: true, mutateData: true, gasLimits: opts?.gasLimits})
     }
 
