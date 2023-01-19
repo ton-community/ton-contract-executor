@@ -57,7 +57,7 @@ export type TVMStackEntryInt = { type: 'int', value: string }
 export type TVMStackEntryCellSlice = { type: 'cell_slice', value: string }
 export type TVMStackEntryTuple = { type: 'tuple', value: TVMStackEntry[] }
 
-export const stackInt = (value: number|BN): TVMStackEntryInt => ({ type: 'int', value: value.toString(10) })
+export const stackInt = (value: number|bigint): TVMStackEntryInt => ({ type: 'int', value: value.toString(10) })
 export const stackTuple = (items: TVMStackEntry[]): TVMStackEntryTuple => ({ type: 'tuple', value: items })
 export const stackNull = (): TVMStackEntryNull => ({ type: 'null' })
 export const stackCell = (cell: Cell): TVMStackEntryCell => ({ type: 'cell', value: cellToBoc(cell) })
@@ -65,9 +65,9 @@ export const stackSlice = (cell: Cell): TVMStackEntryCellSlice => ({ type: 'cell
 
 export type C7Config = {
     unixtime?: number,
-    balance?: BN,
+    balance?: bigint,
     myself?: Address,
-    randSeed?: BN
+    randSeed?: bigint
     actions?: number
     messagesSent?: number
     blockLt?: number
@@ -88,13 +88,13 @@ export function buildC7(config: C7Config) {
 
     let seed = randomBytes(32)
 
-    let seedInt = new BN(seed)
+    let seedInt = BigInt(`0x${seed.toString("hex")}`);
 
     let currentConfig: Required<C7Config> = {
         unixtime: now,
-        balance: new BN(1000),
+        balance: 1000n,
         myself: new Address(0, Buffer.alloc(256 / 8)),
-        randSeed: seedInt,
+        randSeed: seedInt, // todo
         actions: 0,
         messagesSent: 0,
         blockLt: now,
