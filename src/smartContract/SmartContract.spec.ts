@@ -216,7 +216,6 @@ describe('SmartContract', () => {
         })
 
         let msgCell = new Cell().asBuilder()
-        // msg.writeTo(msgCell)
         storeMessageRelaxed(msg)(msgCell)
 
         let res = await contract.sendInternalMessage(msg)
@@ -247,7 +246,6 @@ describe('SmartContract', () => {
         })
 
         let msgCell = new Cell().asBuilder()
-        // msg.writeTo(msgCell)
 
         let res = await contract.sendExternalMessage(msg)
         storeMessage(msg)(msgCell)
@@ -280,13 +278,11 @@ describe('SmartContract', () => {
 
         let contract = await smcFromSource(source, new Cell())
         const msg = internal({
-            // from: new Address(0, Buffer.alloc(32)),
             to: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
             value: toNano(1),
             bounce: false,
             body: new Cell()
         });
-
         msg.info.src = new Address(0, Buffer.alloc(32));
 
         let res = await contract.sendInternalMessage(msg)

@@ -93,7 +93,7 @@ export function buildC7(config: C7Config) {
         unixtime: now,
         balance: 1000n,
         myself: new Address(0, Buffer.alloc(256 / 8)),
-        randSeed: seedInt, // todo
+        randSeed: seedInt,
         actions: 0,
         messagesSent: 0,
         blockLt: now,
