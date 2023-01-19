@@ -178,17 +178,9 @@ export class SmartContract {
     }
 
     async sendInternalMessage(message: MessageRelaxed, opts?: { gasLimits?: GasLimits }): Promise<ExecutionResult> {
-        // let msgCell = new Cell()
-        // message.writeTo(msgCell)
-
-        
-
         if (!message.body) {
             throw new Error('No body was provided for message')
         }
-
-        // let bodyCell = new Cell()
-        // message.body.writeTo(bodyCell)
 
         let messageCell = new Cell().asBuilder();
         storeMessageRelaxed(message)(messageCell);
@@ -205,9 +197,6 @@ export class SmartContract {
     }
 
     async sendExternalMessage(message: Message, opts?: { gasLimits?: GasLimits }): Promise<ExecutionResult> {
-        // let msgCell = new Cell()
-        // message.writeTo(msgCell)
-
         if (!message.body) {
             throw new Error('No body was provided for message')
         }
