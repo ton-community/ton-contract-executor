@@ -203,7 +203,6 @@ export class SmartContract {
 
         let messageCell = new Cell().asBuilder();
         storeMessage(message)(messageCell);
-        // message.body.writeTo(bodyCell)
 
         let smcBalance = (this.c7Config.balance ?? 0n)
 
