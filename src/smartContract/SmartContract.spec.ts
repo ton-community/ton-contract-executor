@@ -1,7 +1,6 @@
 import {SmartContract, SmartContractConfig} from "./SmartContract";
 import { Address, Cell, external, internal, Slice, toNano, storeMessage, storeMessageRelaxed, beginCell } from 'ton';
 import {TVMStackEntryTuple} from "../executor/executor";
-import BN from "bn.js";
 import {cellToBoc} from "../utils/cell";
 import {SendMsgAction} from "../utils/parseActionList";
 import {TvmRunnerAsynchronous} from "../executor/TvmRunnerAsynchronous";
@@ -40,8 +39,7 @@ describe('SmartContract', () => {
         let contract = await smcFromSource(source, new Cell())
         let res = await contract.invokeGetMethod('test', [])
 
-        expect(res.result[0]).toBeInstanceOf(BN)
-        expect(res.result[0]).toEqual(new BN(777))
+        expect(res.result[0]).toEqual(777n)
     })
 
     it('should fail when out of gas', async () => {
@@ -99,8 +97,7 @@ describe('SmartContract', () => {
 
         let res = await contract.invokeGetMethod('test', [{type: 'int', value: '123'}])
 
-        expect(res.result[0]).toBeInstanceOf(BN)
-        expect(res.result[0]).toEqual(new BN(123))
+        expect(res.result[0]).toEqual(123n)
     })
 
     it('handle tuples', async () => {
@@ -125,8 +122,8 @@ describe('SmartContract', () => {
 
         let res = await contract.invokeGetMethod('test', [tuple])
         expect(res.result[0]).toEqual([
-            new BN(1),
-            new BN(2)
+            1n,
+            2n
         ])
     })
 
@@ -153,13 +150,13 @@ describe('SmartContract', () => {
         let contract = await smcFromSource(source, dataCell, {getMethodsMutate: true})
 
         let res = await contract.invokeGetMethod('test', [])
-        expect(res.result[0]).toEqual(new BN(0))
+        expect(res.result[0]).toEqual(0n)
 
         let res2 = await contract.invokeGetMethod('test', [])
-        expect(res2.result[0]).toEqual(new BN(1))
+        expect(res2.result[0]).toEqual(1n)
 
         let res3 = await contract.invokeGetMethod('test', [])
-        expect(res3.result[0]).toEqual(new BN(2))
+        expect(res3.result[0]).toEqual(2n)
     })
 
     it('should handle custom time', async () => {
@@ -177,8 +174,7 @@ describe('SmartContract', () => {
         contract.setUnixTime(now)
         let res = await contract.invokeGetMethod('get_time', [])
 
-        expect(res.result[0]).toBeInstanceOf(BN)
-        expect(res.result[0]).toEqual(new BN(now))
+        expect(res.result[0]).toEqual(BigInt(now))
     })
 
     it('should handle custom balance', async () => {
@@ -193,11 +189,10 @@ describe('SmartContract', () => {
             }
         `
         let contract = await smcFromSource(source, new Cell())
-        contract.setBalance(new BN(777))
+        contract.setBalance(777n)
         let res = await contract.invokeGetMethod('my_balance', [])
 
-        expect(res.result[0]).toBeInstanceOf(BN)
-        expect(res.result[0]).toEqual(new BN(777))
+        expect(res.result[0]).toEqual(777n)
     })
 
     it('should handle internal messages', async () => {
@@ -209,7 +204,7 @@ describe('SmartContract', () => {
         `
 
         let contract = await smcFromSource(source, new Cell())
-        contract.setBalance(new BN(500));
+        contract.setBalance(500n);
         let bodyCell = new Cell()
         bodyCell.asBuilder().storeUint(777, 256)
 

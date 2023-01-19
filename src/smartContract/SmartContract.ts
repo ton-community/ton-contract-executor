@@ -9,7 +9,6 @@ import {
     TVMStackEntry,
     TVMStackEntryTuple
 } from "../executor/executor";
-import BN from "bn.js";
 import {bocToCell, cellToBoc} from "../utils/cell";
 import {TvmRunner} from "../executor/TvmRunner";
 import {OutAction, parseActionsList, SetCodeAction} from "../utils/parseActionList";
@@ -19,7 +18,7 @@ type NormalizedStackEntry =
     | null
     | Cell
     | Slice
-    | BN
+    | bigint
     | NormalizedStackEntry[]
 
 async function normalizeTvmStackEntry(entry: TVMStackEntry): Promise<NormalizedStackEntry> {
@@ -30,7 +29,7 @@ async function normalizeTvmStackEntry(entry: TVMStackEntry): Promise<NormalizedS
         return bocToCell(entry.value)
     }
     if (entry.type === 'int') {
-        return new BN(entry.value, 10)
+        return BigInt(entry.value)
     }
     if (entry.type === 'cell_slice') {
         return bocToCell(entry.value).asSlice()
@@ -195,7 +194,7 @@ export class SmartContract {
         storeMessageRelaxed(message)(messageCell);
 
         const value = (message.info as CommonMessageInfoRelaxedInternal).value.coins
-        let smcBalance = (this.c7Config.balance ?? new BN(0)).add(new BN(value.toString()))
+        let smcBalance = (this.c7Config.balance ?? 0n) + value
 
         return await this.runContract('recv_internal', [
             {type: 'int', value: smcBalance.toString(10)},      // smc_balance
@@ -217,7 +216,7 @@ export class SmartContract {
         storeMessage(message)(messageCell);
         // message.body.writeTo(bodyCell)
 
-        let smcBalance = (this.c7Config.balance ?? new BN(0))
+        let smcBalance = (this.c7Config.balance ?? 0n)
 
         return await this.runContract('recv_external', [
             {type: 'int', value: smcBalance.toString(10)},    // smc_balance
@@ -231,7 +230,7 @@ export class SmartContract {
         this.c7Config.unixtime = time
     }
 
-    setBalance(value: BN) {
+    setBalance(value: bigint) {
         this.c7Config.balance = value
     }
 

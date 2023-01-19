@@ -1,7 +1,6 @@
 import {Address, Cell} from "ton";
 import {crc16} from "../utils/crc16";
 import {vm_exec} from '../vm-exec/vmExec'
-import BN from "bn.js";
 import {TvmRunner} from "./TvmRunner";
 import {cellToBoc} from "../utils/cell";
 
