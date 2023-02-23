@@ -1,7 +1,6 @@
-import {Address, Cell} from "ton";
+import {Address, beginCell, Cell} from "ton-core";
 import {crc16} from "../utils/crc16";
 import {vm_exec} from '../vm-exec/vmExec'
-import BN from "bn.js";
 import {TvmRunner} from "./TvmRunner";
 import {cellToBoc} from "../utils/cell";
 
@@ -57,7 +56,7 @@ export type TVMStackEntryInt = { type: 'int', value: string }
 export type TVMStackEntryCellSlice = { type: 'cell_slice', value: string }
 export type TVMStackEntryTuple = { type: 'tuple', value: TVMStackEntry[] }
 
-export const stackInt = (value: number|BN): TVMStackEntryInt => ({ type: 'int', value: value.toString(10) })
+export const stackInt = (value: number|bigint): TVMStackEntryInt => ({ type: 'int', value: value.toString(10) })
 export const stackTuple = (items: TVMStackEntry[]): TVMStackEntryTuple => ({ type: 'tuple', value: items })
 export const stackNull = (): TVMStackEntryNull => ({ type: 'null' })
 export const stackCell = (cell: Cell): TVMStackEntryCell => ({ type: 'cell', value: cellToBoc(cell) })
@@ -65,9 +64,9 @@ export const stackSlice = (cell: Cell): TVMStackEntryCellSlice => ({ type: 'cell
 
 export type C7Config = {
     unixtime?: number,
-    balance?: BN,
+    balance?: bigint,
     myself?: Address,
-    randSeed?: BN
+    randSeed?: bigint
     actions?: number
     messagesSent?: number
     blockLt?: number
@@ -83,16 +82,25 @@ const randomBytes = (n: number): Buffer => {
     return b
 }
 
+const bufferToBigInt = (b: Buffer): bigint => {
+    let n = 0n
+    for (let i = 0; i < b.length; i++) {
+        n <<= 8n
+        n += BigInt(b[i])
+    }
+    return n
+}
+
 export function buildC7(config: C7Config) {
     let now = Math.floor(Date.now() / 1000)
 
     let seed = randomBytes(32)
 
-    let seedInt = new BN(seed)
+    let seedInt = bufferToBigInt(seed)
 
     let currentConfig: Required<C7Config> = {
         unixtime: now,
-        balance: new BN(1000),
+        balance: 1000n,
         myself: new Address(0, Buffer.alloc(256 / 8)),
         randSeed: seedInt,
         actions: 0,
@@ -106,8 +114,9 @@ export function buildC7(config: C7Config) {
     // addr_std$10 anycast:(Maybe Anycast)
     //    workchain_id:int8 address:bits256  = MsgAddressInt;
     // workchain_id:int8 address:bits256  = MsgAddressInt;
-    let addressCell = new Cell()
-    addressCell.bits.writeAddress(currentConfig.myself)
+    let addressCell = beginCell()
+        .storeAddress(currentConfig.myself)
+        .endCell()
 
     // [Integer (Maybe Cell)]
     let balance = stackTuple([stackInt(currentConfig.balance), stackNull()])

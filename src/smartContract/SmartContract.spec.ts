@@ -1,12 +1,12 @@
 import {SmartContract, SmartContractConfig} from "./SmartContract";
-import {Address, Cell, CellMessage, CommonMessageInfo, ExternalMessage, InternalMessage, Slice, toNano} from "ton";
+import {Address, beginCell, Cell, Slice, storeMessage, toNano} from "ton-core";
 import {TVMStackEntryTuple} from "../executor/executor";
-import BN from "bn.js";
 import {cellToBoc} from "../utils/cell";
 import {SendMsgAction} from "../utils/parseActionList";
 import {TvmRunnerAsynchronous} from "../executor/TvmRunnerAsynchronous";
 import {compileFunc} from "@ton-community/func-js";
 import {stdlib} from "./stdlib.fc";
+import { externalIn, internal } from "../utils/message";
 
 const smcFromSource = async (source: string, data: Cell, config?: Partial<SmartContractConfig>) => {
     const cr = await compileFunc({
@@ -40,8 +40,7 @@ describe('SmartContract', () => {
         let contract = await smcFromSource(source, new Cell())
         let res = await contract.invokeGetMethod('test', [])
 
-        expect(res.result[0]).toBeInstanceOf(BN)
-        expect(res.result[0]).toEqual(new BN(777))
+        expect(res.result[0]).toEqual(777n)
     })
 
     it('should fail when out of gas', async () => {
@@ -76,8 +75,9 @@ describe('SmartContract', () => {
             }
         `
         let contract = await smcFromSource(source, new Cell())
-        let cell = new Cell()
-        cell.bits.writeUint(0xFFFFFFFF, 32)
+        let cell = beginCell()
+            .storeUint(0xFFFFFFFF, 32)
+            .endCell()
 
         let res = await contract.invokeGetMethod('test', [{type: 'cell', value: cellToBoc(cell) }])
 
@@ -99,8 +99,7 @@ describe('SmartContract', () => {
 
         let res = await contract.invokeGetMethod('test', [{type: 'int', value: '123'}])
 
-        expect(res.result[0]).toBeInstanceOf(BN)
-        expect(res.result[0]).toEqual(new BN(123))
+        expect(res.result[0]).toEqual(123n)
     })
 
     it('handle tuples', async () => {
@@ -125,8 +124,8 @@ describe('SmartContract', () => {
 
         let res = await contract.invokeGetMethod('test', [tuple])
         expect(res.result[0]).toEqual([
-            new BN(1),
-            new BN(2)
+            1n,
+            2n,
         ])
     })
 
@@ -148,19 +147,20 @@ describe('SmartContract', () => {
                 return seq;
             }
         `
-        let dataCell = new Cell()
-        dataCell.bits.writeUint(0, 32)
+        let dataCell = beginCell()
+            .storeUint(0, 32)
+            .endCell()
 
         let contract = await smcFromSource(source, dataCell, {getMethodsMutate: true})
 
         let res = await contract.invokeGetMethod('test', [])
-        expect(res.result[0]).toEqual(new BN(0))
+        expect(res.result[0]).toEqual(0n)
 
         let res2 = await contract.invokeGetMethod('test', [])
-        expect(res2.result[0]).toEqual(new BN(1))
+        expect(res2.result[0]).toEqual(1n)
 
         let res3 = await contract.invokeGetMethod('test', [])
-        expect(res3.result[0]).toEqual(new BN(2))
+        expect(res3.result[0]).toEqual(2n)
     })
 
     it('should handle custom time', async () => {
@@ -178,8 +178,7 @@ describe('SmartContract', () => {
         contract.setUnixTime(now)
         let res = await contract.invokeGetMethod('get_time', [])
 
-        expect(res.result[0]).toBeInstanceOf(BN)
-        expect(res.result[0]).toEqual(new BN(now))
+        expect(res.result[0]).toEqual(BigInt(now))
     })
 
     it('should handle custom balance', async () => {
@@ -194,11 +193,10 @@ describe('SmartContract', () => {
             }
         `
         let contract = await smcFromSource(source, new Cell())
-        contract.setBalance(new BN(777))
+        contract.setBalance(777n)
         let res = await contract.invokeGetMethod('my_balance', [])
 
-        expect(res.result[0]).toBeInstanceOf(BN)
-        expect(res.result[0]).toEqual(new BN(777))
+        expect(res.result[0]).toEqual(777n)
     })
 
     it('should handle internal messages', async () => {
@@ -210,27 +208,23 @@ describe('SmartContract', () => {
         `
 
         let contract = await smcFromSource(source, new Cell())
-        contract.setBalance(new BN(500));
-        let bodyCell = new Cell()
-        bodyCell.bits.writeUint(777, 256)
+        contract.setBalance(500n);
+        let bodyCell = beginCell()
+            .storeUint(777, 256)
+            .endCell()
 
-        let msg = new InternalMessage({
-            to: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
+        let msg = internal({
+            dest: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
             value: toNano(1),
             bounce: false,
-            body: new CommonMessageInfo({
-                body: new CellMessage(bodyCell)
-            })
+            body: bodyCell,
         })
-
-        let msgCell = new Cell()
-        msg.writeTo(msgCell)
 
         let res = await contract.sendInternalMessage(msg)
         expect(res.exit_code).toEqual(0)
         let [resCell, resBody] = res.result as [Cell, Slice]
-        expect(resCell.toString()).toEqual(msgCell.toString())
-        expect(resBody.toCell().toString()).toEqual(bodyCell.toString())
+        expect(resCell.equals(beginCell().storeWritable(storeMessage(msg)).endCell())).toBeTruthy()
+        expect(resBody.asCell().equals(bodyCell)).toBeTruthy()
     })
 
     it('should handle external messages', async () => {
@@ -245,23 +239,19 @@ describe('SmartContract', () => {
         `
 
         let contract = await smcFromSource(source, new Cell())
-        let bodyCell = new Cell()
-        bodyCell.bits.writeUint(777, 256)
+        let bodyCell = beginCell()
+            .storeUint(777, 256)
+            .endCell()
 
-        let msg = new ExternalMessage({
-            to: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
-            body: new CommonMessageInfo({
-                body: new CellMessage(bodyCell)
-            })
+        let msg = externalIn({
+            dest: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
+            body: bodyCell,
         })
-
-        let msgCell = new Cell()
-        msg.writeTo(msgCell)
 
         let res = await contract.sendExternalMessage(msg)
         let [resCell, resBody] = res.result as [Cell, Slice]
-        expect(resCell.toString()).toEqual(msgCell.toString())
-        expect(resBody.toCell().toString()).toEqual(bodyCell.toString())
+        expect(resCell.equals(beginCell().storeWritable(storeMessage(msg)).endCell())).toBeTruthy()
+        expect(resBody.asCell().equals(bodyCell)).toBeTruthy()
     })
 
     it('should return actions', async () => {
@@ -288,14 +278,11 @@ describe('SmartContract', () => {
 
         let contract = await smcFromSource(source, new Cell())
 
-        let res = await contract.sendInternalMessage(new InternalMessage({
-            from: new Address(0, Buffer.alloc(32)),
-            to: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
+        let res = await contract.sendInternalMessage(internal({
+            dest: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
             value: toNano(1),
             bounce: false,
-            body: new CommonMessageInfo({
-                body: new CellMessage(new Cell())
-            })
+            body: new Cell(),
         }))
         expect(res.actionList).toHaveLength(1)
         let msgAction = res.actionList[0] as SendMsgAction
@@ -311,13 +298,11 @@ describe('SmartContract', () => {
             }
         `
         let contract = await smcFromSource(source, new Cell())
-        let res = await contract.sendInternalMessage(new InternalMessage({
-            to: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
+        let res = await contract.sendInternalMessage(internal({
+            dest: Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t'),
             value: toNano(1),
             bounce: false,
-            body: new CommonMessageInfo({
-                body: new CellMessage(new Cell())
-            })
+            body: new Cell(),
         }))
 
         expect(contract.codeCell.equals(new Cell())).toBe(true)

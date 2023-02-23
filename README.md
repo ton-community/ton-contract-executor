@@ -40,7 +40,7 @@ Creating SmartContract from FunC source code (here the `@ton-community/func-js` 
 ```typescript
 import { compileFunc } from "@ton-community/func-js";
 import { SmartContract } from "ton-contract-executor";
-import { Cell } from "ton";
+import { Cell } from "ton-core";
 
 async function main() {
     const source = `
@@ -75,7 +75,7 @@ For example if you need to debug some existing contract from network.
 Here is an example of creating a local copy of existing wallet smart contract from the network deployed at ``EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t`` address and getting its seq:
 
 ```typescript
-import {Address, Cell, TonClient} from "ton";
+import {Address, Cell, TonClient} from "ton-core";
 import {SmartContract} from "ton-contract-executor";
 
 const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t')
@@ -108,7 +108,7 @@ You can invoke any get method on contract using ```invokeGetMethod``` function:
 
 ```typescript
 import { SmartContract, stackInt } from "ton-contract-executor";
-import { Cell } from "ton";
+import { Cell } from "ton-core";
 
 async function main() {
     const source = `
@@ -150,11 +150,10 @@ You can create arguments of other types for get methods using exported functions
 
 ### Sending messages to contract
 
-You can send both external and internal messages to your contract via calling ```sendInternalMessage``` or ```sendExternalMessage```:
-
+You can send both external and internal messages to your contract by calling `sendMessage`:
 ```typescript
-import { SmartContract } from "ton-contract-executor";
-import { Cell, InternalMessage, CommonMessageInfo, CellMessage } from "ton";
+import { SmartContract, internal } from "ton-contract-executor";
+import { Cell } from "ton-core";
 
 async function main() {
     const contract = await SmartContract.fromCell(
@@ -164,27 +163,28 @@ async function main() {
     
     const msgBody = new Cell()
     
-    const res = await this.contract.sendInternalMessage(new InternalMessage({
-        to: contractAddress,
-        from: from,
-        value: 1, // 1 nanoton
+    const res = await this.contract.sendInternalMessage(internal({
+        dest: contractAddress,
+        value: 1n, // 1 nanoton
         bounce: false,
-        body: new CommonMessageInfo({
-            body: new CellMessage(msgBody)
-        })
+        body: msgBody,
     }))
 }
 ```
 
+`ton-contract-executor` exports two helpers, `internal` and `externalIn` to help you create the necessary `Message` objects.
+
+There are two aliases for `sendMessage` - `sendInternalMessage` and `sendExternalMessage`, but they only check that the type of the provided `Message` is `internal` or `external-in` respectively, otherwise their behavior is the same as `sendMessage`.
+
 ### Setting gas limits
 
-`invokeGetMethod`, `sendInternalMessage`, `sendExternalMessage` all support last optional `opts?: { gasLimits?: GasLimits; }` argument for setting gas limits.
+`invokeGetMethod`, `sendMessage`, `sendInternalMessage`, `sendExternalMessage` all support last optional `opts?: { gasLimits?: GasLimits; }` argument for setting gas limits.
 As an example, the following code
 
 ```typescript
 import { compileFunc } from "@ton-community/func-js";
 import { SmartContract, stackInt } from "ton-contract-executor";
-import { Cell } from "ton";
+import { Cell } from "ton-core";
 
 async function main() {
     const source = `
@@ -225,9 +225,9 @@ will output a `failed` execution result to console, because such a call requires
 
 ### Execution result
 
-As the result of calling ```sendInternalMessage```, ```sendExternalMessage``` or ```invokeGetMethod``` ExecutionResult object is returned.
+As the result of calling ```sendMessage```, ```sendInternalMessage```, ```sendExternalMessage``` or ```invokeGetMethod```, an `ExecutionResult` object is returned.
 
-ExecutionResult could be either successful or failed:
+`ExecutionResult` could be either successful or failed:
 
 ```typescript
 declare type FailedExecutionResult = {
@@ -287,9 +287,9 @@ C7 register is used to access some external information in contract:
 ```typescript
 export declare type C7Config = {
     unixtime?: number;
-    balance?: number;
+    balance?: bigint;
     myself?: Address;
-    randSeed?: BN;
+    randSeed?: bigint;
     actions?: number;
     messagesSent?: number;
     blockLt?: number;
