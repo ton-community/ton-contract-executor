@@ -1,4 +1,4 @@
-import {Address, beginCell, Cell} from "ton-core";
+import {Address, beginCell, Cell} from "@ton/core";
 import {crc16} from "../utils/crc16";
 import {vm_exec} from '../vm-exec/vmExec'
 import {TvmRunner} from "./TvmRunner";

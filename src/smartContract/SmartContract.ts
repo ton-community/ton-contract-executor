@@ -1,4 +1,4 @@
-import {Cell, Message, Slice, storeMessage, beginCell} from "ton-core";
+import {Cell, Message, Slice, storeMessage, beginCell} from "@ton/core";
 import {
     buildC7,
     C7Config,
