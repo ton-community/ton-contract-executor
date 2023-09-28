@@ -1,4 +1,4 @@
-import {Cell, loadCurrencyCollection, loadMessageRelaxed, CurrencyCollection, Slice, MessageRelaxed} from "ton-core";
+import {Cell, loadCurrencyCollection, loadMessageRelaxed, CurrencyCollection, Slice, MessageRelaxed} from "@ton/core";
 
 // out_list_empty$_ = OutList 0;
 // out_list$_ {n:#} prev:^(OutList n) action:OutAction

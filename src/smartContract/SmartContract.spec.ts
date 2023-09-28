@@ -1,5 +1,5 @@
 import {SmartContract, SmartContractConfig} from "./SmartContract";
-import {Address, beginCell, Cell, Slice, storeMessage, toNano} from "ton-core";
+import {Address, beginCell, Cell, Slice, storeMessage, toNano} from "@ton/core";
 import {TVMStackEntryTuple} from "../executor/executor";
 import {cellToBoc} from "../utils/cell";
 import {SendMsgAction} from "../utils/parseActionList";

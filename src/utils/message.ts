@@ -1,4 +1,4 @@
-import { Address, Cell, CommonMessageInfo, ExternalAddress, Message } from "ton-core";
+import { Address, Cell, CommonMessageInfo, ExternalAddress, Message } from "@ton/core";
 
 export type InternalMessageInfoParams = {
     src?: Address,
