@@ -40,7 +40,7 @@ Creating SmartContract from FunC source code (here the `@ton-community/func-js` 
 ```typescript
 import { compileFunc } from "@ton-community/func-js";
 import { SmartContract } from "ton-contract-executor";
-import { Cell } from "ton-core";
+import { Cell } from "@ton/core";
 
 async function main() {
     const source = `
@@ -75,7 +75,7 @@ For example if you need to debug some existing contract from network.
 Here is an example of creating a local copy of existing wallet smart contract from the network deployed at ``EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t`` address and getting its seq:
 
 ```typescript
-import {Address, Cell, TonClient} from "ton-core";
+import {Address, Cell, TonClient} from "@ton/core";
 import {SmartContract} from "ton-contract-executor";
 
 const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t')
@@ -108,7 +108,7 @@ You can invoke any get method on contract using ```invokeGetMethod``` function:
 
 ```typescript
 import { SmartContract, stackInt } from "ton-contract-executor";
-import { Cell } from "ton-core";
+import { Cell } from "@ton/core";
 
 async function main() {
     const source = `
@@ -153,7 +153,7 @@ You can create arguments of other types for get methods using exported functions
 You can send both external and internal messages to your contract by calling `sendMessage`:
 ```typescript
 import { SmartContract, internal } from "ton-contract-executor";
-import { Cell } from "ton-core";
+import { Cell } from "@ton/core";
 
 async function main() {
     const contract = await SmartContract.fromCell(
@@ -184,7 +184,7 @@ As an example, the following code
 ```typescript
 import { compileFunc } from "@ton-community/func-js";
 import { SmartContract, stackInt } from "ton-contract-executor";
-import { Cell } from "ton-core";
+import { Cell } from "@ton/core";
 
 async function main() {
     const source = `
