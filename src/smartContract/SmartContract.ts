@@ -181,7 +181,8 @@ export class SmartContract {
         const msgValue = message.info.type === 'internal' ? message.info.value.coins : 0n
         const balance = (this.c7Config.balance ?? 0n) + msgValue
 
-        return await this.runContract('recv_internal', [
+
+        return await this.runContract(message.info.type === 'internal' ? 'recv_internal' : 'recv_external', [
             {type: 'int', value: balance.toString(10)}, // smc_balance
             {type: 'int', value: msgValue.toString(10)}, // msg_value
             {type: 'cell', value: cellToBoc(beginCell().storeWritable(storeMessage(message)).endCell())}, // msg cell
